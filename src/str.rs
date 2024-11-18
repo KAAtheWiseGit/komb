@@ -1,52 +1,52 @@
-use crate::PResult;
+use crate::Parser;
 
-pub fn take_while<F>(input: &str, f: F) -> PResult<&str, &str, ()>
+pub fn take_while<'i, F>(f: F) -> impl Parser<&'i str, &'i str, ()>
 where
 	F: Fn(char) -> bool,
 {
-	let mut end = 0;
+	move |input: &'i str| {
+		let mut end = 0;
 
-	for (i, char) in input.char_indices() {
-		if !f(char) {
-			end = i;
-			break;
+		for (i, char) in input.char_indices() {
+			if !f(char) {
+				end = i;
+				break;
+			}
 		}
-	}
 
-	Ok((&input[end..], &input[..end]))
+		Ok((&input[end..], &input[..end]))
+	}
 }
 
-pub fn take_until<F>(input: &str, f: F) -> PResult<&str, &str, ()>
+pub fn take_until<'i, F>(f: F) -> impl Parser<&'i str, &'i str, ()>
 where
 	F: Fn(char) -> bool,
 {
-	take_while(input, |c| !f(c))
+	take_while(move |c| !f(c))
 }
 
-pub fn one_of<'a>(
-	input: &'a str,
+pub fn one_of<'i>(
 	chars: &[char],
-) -> PResult<&'a str, &'a str, ()> {
-	take_while(input, |c| chars.contains(&c))
+) -> impl Parser<&'i str, &'i str, ()> + use<'i, '_> {
+	take_while(move |c| chars.contains(&c))
 }
 
-pub fn none_of<'a>(
-	input: &'a str,
+pub fn none_of<'i>(
 	chars: &[char],
-) -> PResult<&'a str, &'a str, ()> {
-	take_until(input, |c| chars.contains(&c))
+) -> impl Parser<&'i str, &'i str, ()> + use<'i, '_> {
+	take_until(move |c| chars.contains(&c))
 }
 
-pub fn whitespace(input: &str) -> PResult<&str, &str, ()> {
-	take_while(input, |c| c.is_whitespace())
+pub fn whitespace<'i>() -> impl Parser<&'i str, &'i str, ()> {
+	take_while(|c| c.is_whitespace())
 }
 
-pub fn alphanumeric(input: &str) -> PResult<&str, &str, ()> {
-	take_while(input, |c| c.is_alphanumeric())
+pub fn alphanumeric<'i>() -> impl Parser<&'i str, &'i str, ()> {
+	take_while(|c| c.is_alphanumeric())
 }
 
-pub fn alphabetic(input: &str) -> PResult<&str, &str, ()> {
-	take_while(input, |c| c.is_alphabetic())
+pub fn alphabetic<'i>() -> impl Parser<&'i str, &'i str, ()> {
+	take_while(|c| c.is_alphabetic())
 }
 
 #[cfg(test)]
@@ -55,7 +55,7 @@ mod test {
 
 	#[test]
 	fn playground() {
-		println!("{:?}", none_of("abcd", &['c']));
-		println!("{:?}", one_of("abcd", &['a', 'b', 'd']));
+		println!("{:?}", none_of(&['c'])("abcd"));
+		println!("{:?}", one_of(&['i', 'b', 'd'])("abcd"));
 	}
 }
