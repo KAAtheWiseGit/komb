@@ -1,7 +1,7 @@
-pub mod str;
 pub mod combinator;
+pub mod str;
 
-pub type PResult<I, O, E> = Result<(I, O), E>;
+pub type PResult<I, O, E> = Result<(I, O), (I, E)>;
 
 pub trait Parser<I, O, E>: Fn(I) -> PResult<I, O, E> {}
 
