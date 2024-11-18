@@ -1,3 +1,5 @@
+pub mod str;
+
 pub type PResult<I, O, E> = Result<(I, O), E>;
 
 pub trait Parser<I, O, E>: Fn(I) -> PResult<I, O, E> {}
@@ -23,8 +25,6 @@ mod test {
 
 			Ok((rest, a + b))
 		}
-
-		let s = "string";
 
 		let x = |s: &'a str| -> PResult<&'a str, u8, ()> {
 			let first_char = s.as_bytes()[0];
