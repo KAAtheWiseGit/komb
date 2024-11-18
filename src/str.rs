@@ -1,52 +1,56 @@
 use crate::PResult;
 
-pub fn take_while<F>(f: F) -> impl Fn(&str) -> PResult<&str, &str, ()>
+pub fn take_while<F, const MIN: usize>(
+	f: F,
+) -> impl Fn(&str) -> PResult<&str, &str, ()>
 where
 	F: Fn(char) -> bool,
 {
 	move |input: &str| {
-		let mut end = 0;
-
 		for (i, char) in input.char_indices() {
 			if !f(char) {
-				end = i;
-				break;
+				if input[..i].len() < MIN {
+					return Err(());
+				}
+				return Ok((&input[i..], &input[..i]));
 			}
 		}
 
-		Ok((&input[end..], &input[..end]))
+		Ok(("", input))
 	}
 }
 
-pub fn take_until<F>(f: F) -> impl Fn(&str) -> PResult<&str, &str, ()>
+pub fn take_until<F, const MIN: usize>(
+	f: F,
+) -> impl Fn(&str) -> PResult<&str, &str, ()>
 where
 	F: Fn(char) -> bool,
 {
-	take_while(move |c| !f(c))
+	take_while::<_, MIN>(move |c| !f(c))
 }
 
 pub fn one_of(
 	chars: &[char],
 ) -> impl Fn(&str) -> PResult<&str, &str, ()> + use<'_> {
-	take_while(move |c| chars.contains(&c))
+	take_while::<_, 0>(move |c| chars.contains(&c))
 }
 
 pub fn none_of(
 	chars: &[char],
 ) -> impl Fn(&str) -> PResult<&str, &str, ()> + use<'_> {
-	take_until(move |c| chars.contains(&c))
+	take_until::<_, 0>(move |c| chars.contains(&c))
 }
 
 pub fn whitespace() -> impl Fn(&str) -> PResult<&str, &str, ()> {
-	take_while(|c| c.is_whitespace())
+	take_while::<_, 0>(|c| c.is_whitespace())
 }
 
 pub fn alphanumeric() -> impl Fn(&str) -> PResult<&str, &str, ()> {
-	take_while(|c| c.is_alphanumeric())
+	take_while::<_, 0>(|c| c.is_alphanumeric())
 }
 
 pub fn alphabetic() -> impl Fn(&str) -> PResult<&str, &str, ()> {
-	take_while(|c| c.is_alphabetic())
+	take_while::<_, 0>(|c| c.is_alphabetic())
 }
 
 #[cfg(test)]
@@ -55,7 +59,7 @@ mod test {
 
 	#[test]
 	fn playground() {
-		println!("{:?}", none_of(&['c'])("abcd"));
-		println!("{:?}", one_of(&['a', 'b', 'd'])("abcd"));
+		assert_eq!(("cd", "ab"), none_of(&['c'])("abcd").unwrap());
+		assert_eq!(("cd", "ab"), one_of(&['a', 'b'])("abcd").unwrap());
 	}
 }

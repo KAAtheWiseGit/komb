@@ -20,8 +20,9 @@ mod test {
 
 	#[test]
 	fn playground() {
-		let res = option(alphabetic());
+		let res =
+			option(take_while::<_, 1>(|c| c.is_ascii_lowercase()));
 
-		println!("{:?}", res("abcd"));
+		println!("{:?}", res("ABCD"));
 	}
 }
