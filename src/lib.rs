@@ -1,4 +1,5 @@
 pub mod str;
+pub mod combinator;
 
 pub type PResult<I, O, E> = Result<(I, O), E>;
 
