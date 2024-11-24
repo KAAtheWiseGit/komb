@@ -1,15 +1,13 @@
-use crate::PResult;
+use crate::Parser;
 
-pub fn option<'a, I, O, E, P>(
-	parser: P,
-) -> impl Fn(&'a I) -> PResult<&I, Option<O>, E>
+pub fn option<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, Option<O>, E>
 where
-	I: ?Sized + 'a,
-	P: Fn(&'a I) -> PResult<&I, O, E>,
+	I: 'a + ?Sized,
+	P: Parser<'a, I, O, E>,
 {
-	move |input: &I| match parser(input) {
-		Ok((rest, out)) => Ok((rest, Some(out))),
-		Err(_) => Ok((input, None)),
+	move |input: &'a I| match parser.parse(input) {
+		Ok((out, rest)) => Ok((Some(out), rest)),
+		Err(_) => Ok((None, input)),
 	}
 }
 
@@ -23,6 +21,6 @@ mod test {
 		let res =
 			option(take_while::<_, 1>(|c| c.is_ascii_lowercase()));
 
-		println!("{:?}", res("ABCD"));
+		assert_eq!(Ok((None, "ABCD")), res.parse("ABCD"));
 	}
 }

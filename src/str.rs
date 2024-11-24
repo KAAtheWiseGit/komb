@@ -1,12 +1,12 @@
-use crate::PResult;
+use crate::Parser;
 
-pub fn take_while<F, const MIN: usize>(
+pub fn take_while<'a, F, const MIN: usize>(
 	f: F,
-) -> impl Fn(&str) -> PResult<&str, &str, ()>
+) -> impl Parser<'a, str, &'a str, ()>
 where
 	F: Fn(char) -> bool,
 {
-	move |input: &str| {
+	move |input: &'a str| {
 		for (i, char) in input.char_indices() {
 			if !f(char) {
 				if input[..i].len() < MIN {
@@ -20,36 +20,36 @@ where
 	}
 }
 
-pub fn take_until<F, const MIN: usize>(
+pub fn take_until<'a, F, const MIN: usize>(
 	f: F,
-) -> impl Fn(&str) -> PResult<&str, &str, ()>
+) -> impl Parser<'a, str, &'a str, ()>
 where
 	F: Fn(char) -> bool,
 {
-	take_while::<_, MIN>(move |c| !f(c))
+	take_while::<'a, _, MIN>(move |c| !f(c))
 }
 
-pub fn one_of(
+pub fn one_of<'a>(
 	chars: &[char],
-) -> impl Fn(&str) -> PResult<&str, &str, ()> + use<'_> {
+) -> impl Parser<'a, str, &'a str, ()> + use<'_, 'a> {
 	take_while::<_, 0>(move |c| chars.contains(&c))
 }
 
-pub fn none_of(
+pub fn none_of<'a>(
 	chars: &[char],
-) -> impl Fn(&str) -> PResult<&str, &str, ()> + use<'_> {
+) -> impl Parser<'a, str, &'a str, ()> + use<'_, 'a> {
 	take_until::<_, 0>(move |c| chars.contains(&c))
 }
 
-pub fn whitespace() -> impl Fn(&str) -> PResult<&str, &str, ()> {
+pub fn whitespace<'a>() -> impl Parser<'a, str, &'a str, ()> {
 	take_while::<_, 0>(|c| c.is_whitespace())
 }
 
-pub fn alphanumeric() -> impl Fn(&str) -> PResult<&str, &str, ()> {
+pub fn alphanumeric<'a>() -> impl Parser<'a, str, &'a str, ()> {
 	take_while::<_, 0>(|c| c.is_alphanumeric())
 }
 
-pub fn alphabetic() -> impl Fn(&str) -> PResult<&str, &str, ()> {
+pub fn alphabetic<'a>() -> impl Parser<'a, str, &'a str, ()> {
 	take_while::<_, 0>(|c| c.is_alphabetic())
 }
 
@@ -59,7 +59,13 @@ mod test {
 
 	#[test]
 	fn playground() {
-		assert_eq!(("cd", "ab"), none_of(&['c'])("abcd").unwrap());
-		assert_eq!(("cd", "ab"), one_of(&['a', 'b'])("abcd").unwrap());
+		assert_eq!(
+			("cd", "ab"),
+			none_of(&['c']).parse("abcd").unwrap()
+		);
+		assert_eq!(
+			("cd", "ab"),
+			one_of(&['a', 'b']).parse("abcd").unwrap()
+		);
 	}
 }
