@@ -1,56 +1,53 @@
+use std::convert::Infallible;
+
 use crate::Parser;
 
-pub fn take_while<'a, F, const MIN: usize>(
-	f: F,
-) -> impl Parser<'a, str, &'a str, ()>
+pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, Infallible>
 where
 	F: Fn(char) -> bool,
 {
 	move |input: &'a str| {
+		let mut index = 0;
 		for (i, char) in input.char_indices() {
 			if !f(char) {
-				if input[..i].len() < MIN {
-					return Err(());
-				}
-				return Ok((&input[i..], &input[..i]));
+				return Ok((&input[..i], &input[i..]));
 			}
+			index = i + char.len_utf8();
 		}
 
-		Ok(("", input))
+		Ok((&input[index..], &input[..index]))
 	}
 }
 
-pub fn take_until<'a, F, const MIN: usize>(
-	f: F,
-) -> impl Parser<'a, str, &'a str, ()>
+pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, Infallible>
 where
 	F: Fn(char) -> bool,
 {
-	take_while::<'a, _, MIN>(move |c| !f(c))
+	take_while0(move |c| !f(c))
 }
 
-pub fn one_of<'a>(
+pub fn one_of0<'a>(
 	chars: &[char],
-) -> impl Parser<'a, str, &'a str, ()> + use<'_, 'a> {
-	take_while::<_, 0>(move |c| chars.contains(&c))
+) -> impl Parser<'a, str, &'a str, Infallible> + use<'_, 'a> {
+	take_while0(move |c| chars.contains(&c))
 }
 
-pub fn none_of<'a>(
+pub fn none_of0<'a>(
 	chars: &[char],
-) -> impl Parser<'a, str, &'a str, ()> + use<'_, 'a> {
-	take_until::<_, 0>(move |c| chars.contains(&c))
+) -> impl Parser<'a, str, &'a str, Infallible> + use<'_, 'a> {
+	take_until0(move |c| chars.contains(&c))
 }
 
-pub fn whitespace<'a>() -> impl Parser<'a, str, &'a str, ()> {
-	take_while::<_, 0>(|c| c.is_whitespace())
+pub fn whitespace0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
+	take_while0(|c| c.is_whitespace())
 }
 
-pub fn alphanumeric<'a>() -> impl Parser<'a, str, &'a str, ()> {
-	take_while::<_, 0>(|c| c.is_alphanumeric())
+pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
+	take_while0(|c| c.is_alphanumeric())
 }
 
-pub fn alphabetic<'a>() -> impl Parser<'a, str, &'a str, ()> {
-	take_while::<_, 0>(|c| c.is_alphabetic())
+pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
+	take_while0(|c| c.is_alphabetic())
 }
 
 #[cfg(test)]
@@ -60,12 +57,12 @@ mod test {
 	#[test]
 	fn playground() {
 		assert_eq!(
-			("cd", "ab"),
-			none_of(&['c']).parse("abcd").unwrap()
+			("ab", "cd"),
+			none_of0(&['c']).parse("abcd").unwrap()
 		);
 		assert_eq!(
-			("cd", "ab"),
-			one_of(&['a', 'b']).parse("abcd").unwrap()
+			("ab", "cd"),
+			one_of0(&['a', 'b']).parse("abcd").unwrap()
 		);
 	}
 }
