@@ -57,8 +57,8 @@ mod test {
 
 	#[test]
 	fn playground() {
-		let res = option(take_while0(|c| c.is_ascii_lowercase()));
+		let res = option(take_while1(|c| c.is_ascii_lowercase()));
 
-		assert_eq!(Ok((Some(""), "ABCD")), res.parse("ABCD"));
+		assert_eq!(Ok((None, "ABCD")), res.parse("ABCD"));
 	}
 }

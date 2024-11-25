@@ -50,6 +50,19 @@ pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
 	take_while0(|c| c.is_alphabetic())
 }
 
+pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, str, &'a str, ()>
+where
+	F: Fn(char) -> bool,
+{
+	move |input: &'a str| {
+		if !input.chars().next().is_some_and(&f) {
+			return Err(());
+		}
+
+		Ok(take_while0(&f).parse(input).unwrap())
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
