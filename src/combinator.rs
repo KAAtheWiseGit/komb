@@ -53,7 +53,7 @@ where
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::str::*;
+	use crate::string::*;
 
 	#[test]
 	fn playground() {

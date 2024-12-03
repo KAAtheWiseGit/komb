@@ -1,7 +1,5 @@
-#![allow(unused_imports)]
-
 pub mod combinator;
-pub mod str;
+pub mod string;
 
 pub type PResult<'a, I, O, E> = Result<(O, &'a I), E>;
 

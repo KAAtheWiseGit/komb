@@ -2,6 +2,21 @@ use std::convert::Infallible;
 
 use crate::Parser;
 
+pub fn char<'a>(c: char) -> impl Parser<'a, str, char, ()> {
+	move |input: &'a str| {
+		if let Some(first_char) = input.chars().next() {
+			if first_char == c {
+				let length = c.len_utf8();
+				Ok((c, &input[length..]))
+			} else {
+				Err(())
+			}
+		} else {
+			Err(())
+		}
+	}
+}
+
 pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, Infallible>
 where
 	F: Fn(char) -> bool,
