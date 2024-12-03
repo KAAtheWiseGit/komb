@@ -1,4 +1,5 @@
 pub mod combinator;
+mod select;
 mod span;
 pub mod string;
 
