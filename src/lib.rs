@@ -1,5 +1,8 @@
 pub mod combinator;
+mod span;
 pub mod string;
+
+pub use span::Span;
 
 pub type PResult<'a, I, O, E> = Result<(O, &'a I), E>;
 
