@@ -22,7 +22,7 @@ where
 	P: Parser<'a, I, O1, E1>,
 {
 	move |input: &'a I| match parser.parse(input) {
-		Ok((out, rest)) => Ok((out.into(), rest.into())),
+		Ok((out, rest)) => Ok((out.into(), rest)),
 		Err(err) => Err(err.into()),
 	}
 }
@@ -48,6 +48,20 @@ where
 	V: Clone,
 {
 	map_out(parser, move |_| value.clone())
+}
+
+/// Swaps the parser results: if the underlying parser succeeds, `not` will
+/// return the output wrapped in `Err`.  If it fails, `not` parser will return
+/// `Ok` with the error and the same input which was passed to it.
+pub fn not<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, E, O>
+where
+	I: 'a,
+	P: Parser<'a, I, O, E>,
+{
+	move |input: &'a I| match parser.parse(input) {
+		Ok((out, _)) => Err(out),
+		Err(err) => Ok((err, input)),
+	}
 }
 
 #[cfg(test)]
