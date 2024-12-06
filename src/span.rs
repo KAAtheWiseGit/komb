@@ -1,4 +1,4 @@
-use std::ops::Range;
+use core::ops::Range;
 
 /// A span denoting a subslice of a string or a byte slice, equivalent to a
 /// half-open range.  Unlike the latter, it guarantees that start is always
