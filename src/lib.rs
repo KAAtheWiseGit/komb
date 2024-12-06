@@ -40,7 +40,7 @@ where
 		Self: Sized,
 		F: Fn(E) -> EX,
 	{
-		move |input: &'a I| self.parse(input).map_err(|err| f(err))
+		move |input: &'a I| self.parse(input).map_err(&f)
 	}
 }
 
