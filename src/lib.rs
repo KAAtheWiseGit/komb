@@ -55,3 +55,35 @@ where
 		self(input)
 	}
 }
+
+impl<'a, I, O, E, P0, P1> Parser<'a, I, O, E> for (P0, P1)
+where
+	I: 'a + ?Sized,
+	P0: Parser<'a, I, O, E>,
+	P1: Parser<'a, I, O, E>,
+{
+	fn parse(&self, input: &'a I) -> PResult<'a, I, O, E> {
+		if let Ok((out, rest)) = self.0.parse(input) {
+			return Ok((out, rest));
+		};
+
+		match self.1.parse(input) {
+			Ok((out, rest)) => Ok((out, rest)),
+			Err(err) => Err(err),
+		}
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn test_macro() {
+		use string::char;
+
+		let parser = (char('a'), char('b'));
+		let result = parser.parse("bc");
+		assert_eq!(Ok(('b', "c")), result);
+	}
+}

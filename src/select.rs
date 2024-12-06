@@ -1,4 +1,5 @@
-#[allow(unused_macros)] // it's used in `select!`
+#[macro_export]
+#[doc(hidden)]
 macro_rules! rec_select {
 	($input:ident; $p:expr) => {
 		match $p.parse($input) {
