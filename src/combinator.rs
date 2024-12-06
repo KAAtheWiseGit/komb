@@ -34,6 +34,29 @@ where
 	}
 }
 
+// TODO: investigate discarding the delimiting parsers errors and returning a
+// custom one instead.  This will allow to mix the error types of the parsers,
+// avoiding the `map_err` transforms required right now.
+pub fn delimited<'a, I, E, O0, P0, O1, P1, O2, P2>(
+	left: P0,
+	content: P1,
+	right: P2,
+) -> impl Parser<'a, I, O1, E>
+where
+	I: 'a + ?Sized,
+	P0: Parser<'a, I, O0, E>,
+	P1: Parser<'a, I, O1, E>,
+	P2: Parser<'a, I, O2, E>,
+{
+	move |input: &'a I| {
+		let (_, rest) = left.parse(input)?;
+		let (output, rest) = content.parse(rest)?;
+		let (_, rest) = right.parse(rest)?;
+
+		Ok((output, rest))
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
@@ -44,5 +67,16 @@ mod test {
 		let res = option(take_while1(|c| c.is_ascii_lowercase()));
 
 		assert_eq!(Ok((None, "ABCD")), res.parse("ABCD"));
+	}
+
+	#[test]
+	fn test_delimited() {
+		let del = delimited(
+			char('('),
+			alphabetic0().map_err(|_| ()),
+			char(')'),
+		);
+
+		assert_eq!(Ok(("word", "")), del.parse("(word)"));
 	}
 }
