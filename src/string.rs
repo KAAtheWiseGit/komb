@@ -2,6 +2,31 @@ use std::convert::Infallible;
 
 use crate::Parser;
 
+pub fn literal<'a>(literal: &'static str) -> impl Parser<'a, str, &'a str, ()> {
+	move |input: &'a str| {
+		if input.starts_with(literal) {
+			let length = literal.len();
+			Ok((&input[..length], &input[length..]))
+		} else {
+			Err(())
+		}
+	}
+}
+
+pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, ()> {
+	move |input: &'a str| {
+		let mut current_length = 0;
+		for (i, _) in input.char_indices() {
+			current_length += 1;
+			if current_length == length {
+				return Ok((&input[..i], &input[i..]));
+			}
+		}
+
+		Err(())
+	}
+}
+
 pub fn char<'a>(c: char) -> impl Parser<'a, str, char, ()> {
 	move |input: &'a str| {
 		if let Some(first_char) = input.chars().next() {
