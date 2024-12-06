@@ -1,7 +1,6 @@
 #![no_std]
 
 pub mod combinator;
-mod select;
 mod span;
 pub mod string;
 mod tuples;
