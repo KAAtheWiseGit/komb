@@ -1,10 +1,17 @@
-use crate::Parser;
 use thiserror::Error;
+
+use core::num::ParseIntError;
+
+use crate::Parser;
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum StringError {
 	#[error("reached the end of the input string")]
 	End,
+	#[error("illegal first character for a number: {0}")]
+	NotANumber(char),
+	#[error("failed to parse integer: {0}")]
+	ParseInt(ParseIntError),
 }
 
 pub fn literal<'a>(
@@ -109,6 +116,44 @@ where
 		Ok(take_while0(&f).parse(input).unwrap())
 	}
 }
+
+pub fn digits<'a>(radix: u32) -> impl Parser<'a, str, &'a str, StringError> {
+	take_while1(move |c| c.is_digit(radix))
+}
+
+macro_rules! impl_parse_uint {
+	($name:ident, $type:ty) => {
+		pub fn $name<'a>(
+		) -> impl Parser<'a, str, ($type, &'a str), StringError> {
+			|input: &'a str| {
+				let (s, rest) = digits(10)
+					.parse(input)
+					.map_err(|_| {
+						let Some(first_char) =
+							input.chars().next()
+						else {
+							return StringError::End;
+						};
+
+						StringError::NotANumber(
+							first_char,
+						)
+					})?;
+				let out = s
+					.parse()
+					.map_err(StringError::ParseInt)?;
+
+				Ok(((out, s), rest))
+			}
+		}
+	};
+}
+
+impl_parse_uint!(parse_u8, u8);
+impl_parse_uint!(parse_u16, u16);
+impl_parse_uint!(parse_u32, u32);
+impl_parse_uint!(parse_u64, u64);
+impl_parse_uint!(parse_usize, usize);
 
 #[cfg(test)]
 mod test {
