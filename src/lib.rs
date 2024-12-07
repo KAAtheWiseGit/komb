@@ -44,6 +44,30 @@ where
 	{
 		move |input: &'a I| self.parse(input).map_err(&f)
 	}
+
+	/// Calls the `other` parser if this one fails and returns it's result
+	/// instead.
+	fn or<Q>(self, other: Q) -> impl Parser<'a, I, O, E>
+	where
+		Self: Sized,
+		Q: Parser<'a, I, O, E>,
+	{
+		move |input: &'a I| {
+			self.parse(input).or_else(|_| other.parse(input))
+		}
+	}
+
+	/// Replaces the error with `default` and untouched input if the parser
+	/// fails.  Similar to [`Result::or`], which it uses under the hood.
+	fn or_value(self, default: O) -> impl Parser<'a, I, O, E>
+	where
+		Self: Sized,
+		O: Clone,
+	{
+		move |input: &'a I| {
+			self.parse(input).or(Ok((default.clone(), input)))
+		}
+	}
 }
 
 impl<'a, I, O, E, F> Parser<'a, I, O, E> for F
