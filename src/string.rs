@@ -8,8 +8,8 @@ use crate::Parser;
 pub enum StringError {
 	#[error("reached the end of the input string")]
 	End,
-	#[error("illegal first character for a number: {0}")]
-	NotANumber(char),
+	#[error("parser failed to match")]
+	Unmatched,
 	#[error("failed to parse integer: {0}")]
 	ParseInt(ParseIntError),
 }
@@ -21,10 +21,16 @@ pub fn literal<'a>(
 		if input.starts_with(literal) {
 			let length = literal.len();
 			Ok((&input[..length], &input[length..]))
-		} else {
+		} else if input.is_empty() {
 			Err(StringError::End)
+		} else {
+			Err(StringError::Unmatched)
 		}
 	}
+}
+
+pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+	(literal("\n"), literal("\r\n"))
 }
 
 pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
@@ -48,7 +54,7 @@ pub fn char<'a>(c: char) -> impl Parser<'a, str, char, StringError> {
 				let length = c.len_utf8();
 				Ok((c, &input[length..]))
 			} else {
-				Err(StringError::End)
+				Err(StringError::Unmatched)
 			}
 		} else {
 			Err(StringError::End)
@@ -109,8 +115,12 @@ where
 	F: Fn(char) -> bool,
 {
 	move |input: &'a str| {
-		if !input.chars().next().is_some_and(&f) {
+		let Some(ch) = input.chars().next() else {
 			return Err(StringError::End);
+		};
+
+		if f(ch) {
+			return Err(StringError::Unmatched);
 		}
 
 		Ok(take_while0(&f).parse(input).unwrap())
@@ -129,15 +139,14 @@ macro_rules! impl_parse_uint {
 				let (s, rest) = digits(10)
 					.parse(input)
 					.map_err(|_| {
-						let Some(first_char) =
-							input.chars().next()
-						else {
-							return StringError::End;
-						};
-
-						StringError::NotANumber(
-							first_char,
-						)
+						if input.chars()
+							.next()
+							.is_some()
+						{
+							StringError::End
+						} else {
+							StringError::Unmatched
+						}
 					})?;
 				let out = s
 					.parse()
