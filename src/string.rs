@@ -1,19 +1,26 @@
-use core::convert::Infallible;
-
 use crate::Parser;
+use thiserror::Error;
 
-pub fn literal<'a>(literal: &'static str) -> impl Parser<'a, str, &'a str, ()> {
+#[derive(Debug, PartialEq, Eq, Error)]
+pub enum StringError {
+	#[error("reached the end of the input string")]
+	End,
+}
+
+pub fn literal<'a>(
+	literal: &'static str,
+) -> impl Parser<'a, str, &'a str, StringError> {
 	move |input: &'a str| {
 		if input.starts_with(literal) {
 			let length = literal.len();
 			Ok((&input[..length], &input[length..]))
 		} else {
-			Err(())
+			Err(StringError::End)
 		}
 	}
 }
 
-pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, ()> {
+pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
 	move |input: &'a str| {
 		let mut current_length = 0;
 		for (i, _) in input.char_indices() {
@@ -23,26 +30,26 @@ pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, ()> {
 			}
 		}
 
-		Err(())
+		Err(StringError::End)
 	}
 }
 
-pub fn char<'a>(c: char) -> impl Parser<'a, str, char, ()> {
+pub fn char<'a>(c: char) -> impl Parser<'a, str, char, StringError> {
 	move |input: &'a str| {
 		if let Some(first_char) = input.chars().next() {
 			if first_char == c {
 				let length = c.len_utf8();
 				Ok((c, &input[length..]))
 			} else {
-				Err(())
+				Err(StringError::End)
 			}
 		} else {
-			Err(())
+			Err(StringError::End)
 		}
 	}
 }
 
-pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, Infallible>
+pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
 {
@@ -59,7 +66,7 @@ where
 	}
 }
 
-pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, Infallible>
+pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
 {
@@ -68,35 +75,35 @@ where
 
 pub fn one_of0<'a>(
 	chars: &[char],
-) -> impl Parser<'a, str, &'a str, Infallible> + use<'_, 'a> {
+) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
 	take_while0(move |c| chars.contains(&c))
 }
 
 pub fn none_of0<'a>(
 	chars: &[char],
-) -> impl Parser<'a, str, &'a str, Infallible> + use<'_, 'a> {
+) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
 	take_until0(move |c| chars.contains(&c))
 }
 
-pub fn whitespace0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
+pub fn whitespace0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while0(|c| c.is_whitespace())
 }
 
-pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
+pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while0(|c| c.is_alphanumeric())
 }
 
-pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
+pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while0(|c| c.is_alphabetic())
 }
 
-pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, str, &'a str, ()>
+pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
 {
 	move |input: &'a str| {
 		if !input.chars().next().is_some_and(&f) {
-			return Err(());
+			return Err(StringError::End);
 		}
 
 		Ok(take_while0(&f).parse(input).unwrap())

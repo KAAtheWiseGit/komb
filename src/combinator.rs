@@ -71,11 +71,7 @@ mod test {
 
 	#[test]
 	fn test_delimited() {
-		let del = delimited(
-			char('('),
-			alphabetic0().map_err(|_| ()),
-			char(')'),
-		);
+		let del = delimited(char('('), alphabetic0(), char(')'));
 
 		assert_eq!(Ok(("word", "")), del.parse("(word)"));
 	}
