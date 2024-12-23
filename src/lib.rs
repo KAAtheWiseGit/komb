@@ -80,6 +80,21 @@ where
 			self.parse(input).and_then(|(_, rest)| next.parse(rest))
 		}
 	}
+
+	/// Parse `next` after `self` and discard its output.  If either parser
+	/// fails, the error is returned immediately.
+	fn before<Q, OX>(self, next: Q) -> impl Parser<'a, I, O, E>
+	where
+		Self: Sized,
+		Q: Parser<'a, I, OX, E>,
+	{
+		move |input: &'a I| {
+			let (output, rest) = self.parse(input)?;
+			let (_, rest) = next.parse(rest)?;
+
+			Ok((output, rest))
+		}
+	}
 }
 
 impl<'a, I, O, E, F> Parser<'a, I, O, E> for F
