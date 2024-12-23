@@ -67,6 +67,19 @@ where
 			self.parse(input).or(Ok((default.clone(), input)))
 		}
 	}
+
+	/// If the parser succeeds, `and_then` discards the output and returns
+	/// the result of the `next` parser.  If either parser fails, the error
+	/// is returned immediately.
+	fn and_then<Q, OX>(self, next: Q) -> impl Parser<'a, I, OX, E>
+	where
+		Self: Sized,
+		Q: Parser<'a, I, OX, E>,
+	{
+		move |input: &'a I| {
+			self.parse(input).and_then(|(_, rest)| next.parse(rest))
+		}
+	}
 }
 
 impl<'a, I, O, E, F> Parser<'a, I, O, E> for F
