@@ -18,15 +18,6 @@ where
 	}
 }
 
-pub fn value<'a, I, O, E, V, P>(value: V, parser: P) -> impl Parser<'a, I, V, E>
-where
-	I: 'a,
-	P: Parser<'a, I, O, E>,
-	V: Clone,
-{
-	parser.map_out(move |_| value.clone())
-}
-
 /// Swaps the parser results: if the underlying parser succeeds, `not` will
 /// return the output wrapped in `Err`.  If it fails, `not` parser will return
 /// `Ok` with the error and the same input which was passed to it.
