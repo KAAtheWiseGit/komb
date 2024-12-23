@@ -1,9 +1,13 @@
 mod choice;
 pub use choice::choice;
 
+use core::convert::Infallible;
+
 use crate::Parser;
 
-pub fn option<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, Option<O>, E>
+pub fn option<'a, I, O, E, P>(
+	parser: P,
+) -> impl Parser<'a, I, Option<O>, Infallible>
 where
 	I: 'a + ?Sized,
 	P: Parser<'a, I, O, E>,
