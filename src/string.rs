@@ -76,7 +76,7 @@ where
 			index = i + char.len_utf8();
 		}
 
-		Ok((&input[index..], &input[..index]))
+		Ok((&input[..index], &input[index..]))
 	}
 }
 
