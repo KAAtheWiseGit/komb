@@ -3,7 +3,7 @@ use thiserror::Error;
 use core::convert::Infallible;
 use core::num::ParseIntError;
 
-use crate::{combinator::choice, Parser};
+use crate::{combinator::choice, PResult, Parser};
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum StringError {
@@ -13,6 +13,30 @@ pub enum StringError {
 	Unmatched,
 	#[error("failed to parse integer: {0}")]
 	ParseInt(ParseIntError),
+}
+
+pub fn any_char<'a>(input: &'a str) -> PResult<'a, str, char, StringError> {
+	let Some(ch) = input.chars().next() else {
+		return Err(StringError::End);
+	};
+
+	Ok((ch, &input[ch.len_utf8()..]))
+}
+
+pub fn none_of_char<'a>(
+	chars: &[char],
+) -> impl Parser<'a, str, char, StringError> + use<'_, 'a> {
+	move |input: &'a str| {
+		let Some(ch) = input.chars().next() else {
+			return Err(StringError::End);
+		};
+
+		if !chars.contains(&ch) {
+			Ok((ch, &input[ch.len_utf8()..]))
+		} else {
+			Err(StringError::Unmatched)
+		}
+	}
 }
 
 pub fn literal<'a>(
