@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use core::num::ParseIntError;
 
-use crate::{tuples::choice, Parser};
+use crate::{combinator::choice, Parser};
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum StringError {

@@ -3,7 +3,6 @@
 pub mod combinator;
 mod span;
 pub mod string;
-mod tuples;
 
 pub use span::Span;
 

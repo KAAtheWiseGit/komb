@@ -1,3 +1,6 @@
+mod choice;
+pub use choice::choice;
+
 use crate::Parser;
 
 pub fn option<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, Option<O>, E>
