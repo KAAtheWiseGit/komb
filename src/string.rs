@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use core::num::ParseIntError;
 
-use crate::Parser;
+use crate::{tuples::choice, Parser};
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum StringError {
@@ -30,7 +30,7 @@ pub fn literal<'a>(
 }
 
 pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
-	(literal("\n"), literal("\r\n"))
+	choice((literal("\n"), literal("\r\n")))
 }
 
 pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
