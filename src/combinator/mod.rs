@@ -64,6 +64,33 @@ where
 	}
 }
 
+pub fn fold<'a, I, O, OX, E, P, F>(
+	parser: P,
+	acc: OX,
+	apply: F,
+) -> impl Parser<'a, I, OX, E>
+where
+	I: 'a + ?Sized,
+	P: Parser<'a, I, O, E>,
+	OX: Clone,
+	F: Fn(&mut OX, O),
+{
+	move |input: &'a I| {
+		let mut acc = acc.clone();
+		let mut input = input;
+
+		loop {
+			let Ok((output, rest)) = parser.parse(input) else {
+				break;
+			};
+			input = rest;
+			apply(&mut acc, output);
+		}
+
+		Ok((acc, input))
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;
@@ -71,9 +98,9 @@ mod test {
 
 	#[test]
 	fn playground() {
-		let res = option(take_while1(|c| c.is_ascii_lowercase()));
+		let p = option(take_while1(|c| c.is_ascii_lowercase()));
 
-		assert_eq!(Ok((None, "ABCD")), res.parse("ABCD"));
+		assert_eq!(Ok((None, "ABCD")), p.parse("ABCD"));
 	}
 
 	#[test]
@@ -81,5 +108,14 @@ mod test {
 		let del = delimited(char('('), alphabetic0(), char(')'));
 
 		assert_eq!(Ok(("word", "")), del.parse("(word)"));
+	}
+
+	#[test]
+	fn test_fold() {
+		let p = fold(char('a'), String::new(), |acc, ch| {
+			acc.push(ch);
+		});
+
+		assert_eq!(Ok((String::from("aa"), "b")), p.parse("aab"));
 	}
 }
