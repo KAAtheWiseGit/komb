@@ -105,7 +105,11 @@ mod test {
 
 	#[test]
 	fn test_delimited() {
-		let del = delimited(char('('), alphabetic0(), char(')'));
+		let del = delimited(
+			char('('),
+			alphabetic0().map_err(|_| StringError::End),
+			char(')'),
+		);
 
 		assert_eq!(Ok(("word", "")), del.parse("(word)"));
 	}

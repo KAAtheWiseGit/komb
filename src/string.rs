@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use core::convert::Infallible;
 use core::num::ParseIntError;
 
 use crate::{combinator::choice, Parser};
@@ -62,7 +63,7 @@ pub fn char<'a>(c: char) -> impl Parser<'a, str, char, StringError> {
 	}
 }
 
-pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
+pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, Infallible>
 where
 	F: Fn(char) -> bool,
 {
@@ -79,7 +80,7 @@ where
 	}
 }
 
-pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
+pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, Infallible>
 where
 	F: Fn(char) -> bool,
 {
@@ -88,25 +89,25 @@ where
 
 pub fn one_of0<'a>(
 	chars: &[char],
-) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
+) -> impl Parser<'a, str, &'a str, Infallible> + use<'_, 'a> {
 	take_while0(move |c| chars.contains(&c))
 }
 
 pub fn none_of0<'a>(
 	chars: &[char],
-) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
+) -> impl Parser<'a, str, &'a str, Infallible> + use<'_, 'a> {
 	take_until0(move |c| chars.contains(&c))
 }
 
-pub fn whitespace0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+pub fn whitespace0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
 	take_while0(|c| c.is_whitespace())
 }
 
-pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
 	take_while0(|c| c.is_alphanumeric())
 }
 
-pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, Infallible> {
 	take_while0(|c| c.is_alphabetic())
 }
 
