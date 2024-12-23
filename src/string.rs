@@ -119,7 +119,7 @@ where
 			return Err(StringError::End);
 		};
 
-		if f(ch) {
+		if !f(ch) {
 			return Err(StringError::Unmatched);
 		}
 
