@@ -97,9 +97,9 @@ mod test {
 	#[test]
 	fn test_delimited() {
 		let del = delimited(
-			char('('),
+			literal_char('('),
 			alphabetic0().map_err(|_| StringError::End),
-			char(')'),
+			literal_char(')'),
 		);
 
 		assert_eq!(Ok(("word", "")), del.parse("(word)"));
@@ -107,7 +107,7 @@ mod test {
 
 	#[test]
 	fn test_fold() {
-		let p = fold(char('a'), String::new(), |acc, ch| {
+		let p = fold(literal_char('a'), String::new(), |acc, ch| {
 			acc.push(ch);
 		});
 

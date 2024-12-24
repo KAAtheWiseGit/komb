@@ -5,7 +5,7 @@ use std::convert::Infallible;
 
 use komb::{
 	combinator::{choice, delimited, fold, option},
-	string::{char, literal, none_of_char, one_of0},
+	string::{literal_char, literal, none_of_char, one_of0},
 	PResult, Parser,
 };
 
@@ -57,17 +57,17 @@ fn string(input: &str) -> PResult<str, String, ()> {
 	)
 	.map_err(|_| ());
 
-	delimited(char('"').map_err(|_| ()), p, char('"').map_err(|_| ()))
+	delimited(literal_char('"').map_err(|_| ()), p, literal_char('"').map_err(|_| ()))
 		.parse(input)
 }
 
 fn array(input: &str) -> PResult<str, Vec<Value>, ()> {
-	let p = value.before(option(char(',')).map_err(|_| ()));
+	let p = value.before(option(literal_char(',')).map_err(|_| ()));
 	let folded = fold(p, Vec::new(), |acc, value| acc.push(value));
 	let delimited = delimited(
-		char('[').map_err(|_| ()),
+		literal_char('[').map_err(|_| ()),
 		folded,
-		char(']').map_err(|_| ()),
+		literal_char(']').map_err(|_| ()),
 	);
 
 	delimited.parse(input)

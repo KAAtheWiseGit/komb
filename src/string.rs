@@ -15,30 +15,6 @@ pub enum StringError {
 	ParseInt(ParseIntError),
 }
 
-pub fn any_char<'a>(input: &'a str) -> PResult<'a, str, char, StringError> {
-	let Some(ch) = input.chars().next() else {
-		return Err(StringError::End);
-	};
-
-	Ok((ch, &input[ch.len_utf8()..]))
-}
-
-pub fn none_of_char<'a>(
-	chars: &[char],
-) -> impl Parser<'a, str, char, StringError> + use<'_, 'a> {
-	move |input: &'a str| {
-		let Some(ch) = input.chars().next() else {
-			return Err(StringError::End);
-		};
-
-		if !chars.contains(&ch) {
-			Ok((ch, &input[ch.len_utf8()..]))
-		} else {
-			Err(StringError::Unmatched)
-		}
-	}
-}
-
 pub fn literal<'a>(
 	literal: &'static str,
 ) -> impl Parser<'a, str, &'a str, StringError> {
@@ -69,21 +45,6 @@ pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
 		}
 
 		Err(StringError::End)
-	}
-}
-
-pub fn char<'a>(c: char) -> impl Parser<'a, str, char, StringError> {
-	move |input: &'a str| {
-		if let Some(first_char) = input.chars().next() {
-			if first_char == c {
-				let length = c.len_utf8();
-				Ok((c, &input[length..]))
-			} else {
-				Err(StringError::Unmatched)
-			}
-		} else {
-			Err(StringError::End)
-		}
 	}
 }
 
@@ -150,6 +111,54 @@ where
 
 		Ok(take_while0(&f).parse(input).unwrap())
 	}
+}
+
+// Character combinators
+
+/// Returns the first character in input if it satisfies the predicate.  If the
+/// predicate fails, [`StringError::Unmatched`] is returned.  If the string is
+/// empty, [`StringError::End`] is returned.
+pub fn char<'a, F>(f: F) -> impl Parser<'a, str, char, StringError>
+where
+	F: Fn(char) -> bool,
+{
+	move |input: &'a str| {
+		let Some(ch) = input.chars().next() else {
+			return Err(StringError::End);
+		};
+
+		if f(ch) {
+			Ok((ch, &input[ch.len_utf8()..]))
+		} else {
+			Err(StringError::Unmatched)
+		}
+	}
+}
+
+/// Returns the first char of the input if it's equal to `c` or an error
+/// otherwise.
+pub fn literal_char<'a>(c: char) -> impl Parser<'a, str, char, StringError> {
+	char(move |ch| ch == c)
+}
+
+/// Returns whatever char is first in input.  It can return [`StringError::End`]
+/// if the input is empty.
+pub fn any_char<'a>() -> impl Parser<'a, str, char, StringError> {
+	char(|_| true)
+}
+
+/// Returns the first input char if it's one of `chars`.
+pub fn one_of_char<'a>(
+	chars: &[char],
+) -> impl Parser<'a, str, char, StringError> + use<'_, 'a> {
+	char(|ch| !chars.contains(&ch))
+}
+
+/// Returns the first input char if it's *not* one of `chars`.
+pub fn none_of_char<'a>(
+	chars: &[char],
+) -> impl Parser<'a, str, char, StringError> + use<'_, 'a> {
+	char(|ch| chars.contains(&ch))
 }
 
 pub fn digits<'a>(radix: u32) -> impl Parser<'a, str, &'a str, StringError> {

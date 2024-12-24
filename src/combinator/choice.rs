@@ -62,13 +62,13 @@ mod test {
 
 	#[test]
 	fn test_macro() {
-		use crate::string::char;
+		use crate::string::literal_char;
 
-		let parser = choice((char('a'), char('b')));
+		let parser = choice((literal_char('a'), literal_char('b')));
 		let result = parser.parse("bc");
 		assert_eq!(Ok(('b', "c")), result);
 
-		let parser = choice((char('a'), char('b'), char('c')));
+		let parser = choice((literal_char('a'), literal_char('b'), literal_char('c')));
 		let result = parser.parse("cx");
 		assert_eq!(Ok(('c', "x")), result);
 	}
