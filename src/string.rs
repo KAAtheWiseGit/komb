@@ -30,6 +30,38 @@ pub fn literal<'a>(
 	}
 }
 
+/// Matches a `literal` ignoring the case.  This function is ASCII-only, all
+/// other Unicode characters won't be accounted for.
+pub fn literal_anycase<'a>(
+	literal: &'static str,
+) -> impl Parser<'a, str, &'a str, StringError> {
+	move |input: &'a str| {
+		let length = literal.len();
+
+		let mut literal_chars = literal.chars();
+		let mut input_chars = input.chars();
+
+		loop {
+			let Some(lit_ch) = literal_chars.next() else {
+				return Ok((
+					&input[..length],
+					&input[length..],
+				));
+			};
+
+			let Some(input_ch) = input_chars.next() else {
+				return Err(StringError::End);
+			};
+
+			if lit_ch.to_ascii_lowercase()
+				!= input_ch.to_ascii_lowercase()
+			{
+				return Err(StringError::Unmatched);
+			}
+		}
+	}
+}
+
 pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	choice((literal("\n"), literal("\r\n")))
 }
