@@ -106,6 +106,28 @@ pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	choice((literal("\n"), literal("\r\n")))
 }
 
+/// Succeeds if the input is empty.
+///
+/// ```rust
+/// use komb::{Parser, string::{literal, eof, StringError}};
+///
+/// # fn main() {
+/// let p = literal("Hello world").before(eof());
+///
+/// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
+/// assert_eq!(Err(StringError::Unmatched), p.parse("Hello world and then some"));
+/// # }
+/// ```
+pub fn eof<'a>() -> impl Parser<'a, str, (), StringError> {
+	move |input: &'a str| {
+		if input.is_empty() {
+			Ok(((), input))
+		} else {
+			Err(StringError::Unmatched)
+		}
+	}
+}
+
 /// Takes exactly `length` characters (not bytes) from the input.  Returns
 /// [`StringError::End`] if the string isn't long enough.
 pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
