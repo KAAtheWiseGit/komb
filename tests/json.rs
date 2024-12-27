@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 
 use komb::{
-	combinator::{choice, delimited, fold, option},
+	combinator::{choice, delimited, fold, optional},
 	string::{literal_char, literal, none_of_char, one_of0},
 	PResult, Parser,
 };
@@ -62,7 +62,7 @@ fn string(input: &str) -> PResult<str, String, ()> {
 }
 
 fn array(input: &str) -> PResult<str, Vec<Value>, ()> {
-	let p = value.before(option(literal_char(',')).map_err(|_| ()));
+	let p = value.before(optional(literal_char(',')).map_err(|_| ()));
 	let folded = fold(p, Vec::new(), |acc, value| acc.push(value));
 	let delimited = delimited(
 		literal_char('[').map_err(|_| ()),

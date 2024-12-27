@@ -5,7 +5,20 @@ use core::convert::Infallible;
 
 use crate::Parser;
 
-pub fn option<'a, I, O, E, P>(
+/// Makes the passed parser optional.  That is, it'll return `Ok((None, input))`
+/// if the underlying parser fails.  The input won't be consumed.
+///
+/// ```rust
+/// use komb::{Parser, combinator::optional, string::literal};
+///
+/// # fn main() {
+/// let p = optional(literal("lit"));
+///
+/// assert_eq!(Ok((Some("lit"), " rest")), p.parse("lit rest"));
+/// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
+/// # }
+/// ```
+pub fn optional<'a, I, O, E, P>(
 	parser: P,
 ) -> impl Parser<'a, I, Option<O>, Infallible>
 where
@@ -20,10 +33,22 @@ where
 
 /// Swaps the parser results: if the underlying parser succeeds, `not` will
 /// return the output wrapped in `Err`.  If it fails, `not` parser will return
-/// `Ok` with the error and the same input which was passed to it.
+/// `Ok` with the error and the same input which was passed to it.  In case of
+/// an error the input is not consumed.
+///
+/// ```rust
+/// use komb::{Parser, combinator::not, string::{literal, StringError}};
+///
+/// # fn main() {
+/// let p = not(literal("str"));
+///
+/// assert_eq!(Err("str"), p.parse("str"));
+/// assert_eq!(Ok((StringError::Unmatched, "other")), p.parse("other"));
+/// # }
+/// ```
 pub fn not<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, E, O>
 where
-	I: 'a,
+	I: 'a + ?Sized,
 	P: Parser<'a, I, O, E>,
 {
 	move |input: &'a I| match parser.parse(input) {
@@ -35,6 +60,9 @@ where
 // TODO: investigate discarding the delimiting parsers errors and returning a
 // custom one instead.  This will allow to mix the error types of the parsers,
 // avoiding the `map_err` transforms required right now.
+/// Matches the `content` parser with `left` and `right` at the start and the
+/// end respectively.  If any one of the three parsers fails, this error is
+/// returned.  Otherwise the input of `content` is returned.
 pub fn delimited<'a, I, E, O0, P0, O1, P1, O2, P2>(
 	left: P0,
 	content: P1,
@@ -55,6 +83,30 @@ where
 	}
 }
 
+/// Applies `parser` and passes its output to the `apply`, which can modify the
+/// `acc` accumulator.  Useful for building strings, vectors of AST elements,
+/// and so on.
+///
+/// Note that `fold` will stop when `parser` returns an error.  This means that
+/// if `parser` never errors out, `fold` will hang forever.
+///
+/// ```rust
+/// use komb::{Parser, combinator::fold, string::{any_char, literal_char}};
+///
+/// # fn main() {
+/// let p = fold(
+///     any_char().before(literal_char(',')),
+///     Vec::new(),
+///     |v, element| {
+///         v.push(element)
+///     }
+/// );
+///
+/// let (output, _) = p.parse("a,b,c,d,").unwrap();
+///
+/// assert_eq!(vec!['a', 'b', 'c', 'd'], output);
+/// # }
+/// ```
 pub fn fold<'a, I, O, OX, E, P, F>(
 	parser: P,
 	acc: OX,
@@ -89,7 +141,7 @@ mod test {
 
 	#[test]
 	fn playground() {
-		let p = option(take_while1(|c| c.is_ascii_lowercase()));
+		let p = optional(take_while1(|c| c.is_ascii_lowercase()));
 
 		assert_eq!(Ok((None, "ABCD")), p.parse("ABCD"));
 	}

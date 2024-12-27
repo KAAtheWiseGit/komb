@@ -7,6 +7,22 @@ where
 	fn choice(&self, input: &'a I) -> PResult<'a, I, O, E>;
 }
 
+/// Picks the first succeeding parser and returns it's output.  If all parsers
+/// fail, the error from the last one is returned.
+///
+/// ```rust
+/// use komb::Parser;
+/// use komb::combinator::choice;
+/// use komb::string::{StringError, literal};
+///
+/// # fn main() {
+/// let p = choice((literal("a"), literal("b"), literal("c")));
+/// assert_eq!(Ok(("a", " rest")), p.parse("a rest"));
+/// assert_eq!(Ok(("b", " rest")), p.parse("b rest"));
+/// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
+/// assert_eq!(Err(StringError::Unmatched), p.parse("d"));
+/// # }
+/// ```
 pub fn choice<'a, I, O, E, P>(parsers: P) -> impl Parser<'a, I, O, E>
 where
 	I: 'a + ?Sized,
@@ -68,7 +84,11 @@ mod test {
 		let result = parser.parse("bc");
 		assert_eq!(Ok(('b', "c")), result);
 
-		let parser = choice((literal_char('a'), literal_char('b'), literal_char('c')));
+		let parser = choice((
+			literal_char('a'),
+			literal_char('b'),
+			literal_char('c'),
+		));
 		let result = parser.parse("cx");
 		assert_eq!(Ok(('c', "x")), result);
 	}
