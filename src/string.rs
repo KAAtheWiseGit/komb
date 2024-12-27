@@ -111,6 +111,25 @@ pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	choice(("\n", "\r\n"))
 }
 
+/// Matches a single `\n`-terminated line.
+///
+/// Returns the whole line excluding the terminating newline character.  If the
+/// line ended in `\r\n`, carriage return will be part of the output.
+///
+/// ```rust
+/// use komb::{Parser, string::{line, StringError}};
+///
+/// assert_eq!(Ok(("Hello", "world")), line().parse("Hello\nworld"));
+/// assert_eq!(Ok(("Hello\r", "world")), line().parse("Hello\r\nworld"));
+/// assert_eq!(Ok(("", "next line")), line().parse("\nnext line"));
+/// assert_eq!(Err(StringError::End), line().parse(""));
+/// // No newline at the end
+/// assert_eq!(Err(StringError::End), line().parse("Hello there"));
+/// ```
+pub fn line<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+	none_of0(&['\n']).before(line_end())
+}
+
 /// Succeeds if the input is empty.
 ///
 /// ```rust
