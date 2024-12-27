@@ -1,3 +1,5 @@
+//! Type-agnostic combinators which combine other parsers.
+
 mod choice;
 pub use choice::choice;
 

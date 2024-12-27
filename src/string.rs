@@ -1,15 +1,32 @@
+//! Concrete parsers which operate on `str` input.
+//!
+//! All of the parsers return [`StringError`] for easier compositon.
+
 use thiserror::Error;
 
 use core::num::ParseIntError;
 
 use crate::{combinator::choice, Parser};
 
+/// A unified error types for all `str` parsers.
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum StringError {
+	/// Indicates that the input string has ended, running out of content.
+	///
+	/// It's most often returned when applying combinators to an empty
+	/// string and in a few rare cases like [`take`].  Most other functions,
+	/// including [`literal`], return
+	/// [`Unmatched`][`StringError::Unmatched`] on length mismatch.
 	#[error("reached the end of the input string")]
 	End,
+	/// A kitchen-sink for all kinds of parser failures.  In general, it
+	/// means that a non-empty string didn't match the parser.  It doesn't
+	/// apply to higher level transformations, such as integer parsing,
+	/// though.
 	#[error("parser failed to match")]
 	Unmatched,
+	/// The parser faild to convert a string to an integer.  This wraps the
+	/// [`ParseIntError`] returned by `from_str_radix`.
 	#[error("failed to parse integer: {0}")]
 	ParseInt(ParseIntError),
 }
@@ -144,6 +161,24 @@ pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
 	}
 }
 
+/// Cuts off a prefix of a string for whose characters the predicate `f` returns
+/// `true`.
+///
+/// If it hits the end of the string, the whole string will be returned and the
+/// remainder will be an empty string pointing to the end of input.
+///
+// TODO: can this be made into a macro?
+/// Note that this function will succeed even if it matches no characters.  In
+/// this case it'll return an empty string pointing to the start of input as the
+/// output.  To fail in such cases use [`take_while1`].
+///
+/// ```rust
+/// use komb::{Parser, string::{take_while0, StringError}};
+///
+/// let p = take_while0(|ch| ch.is_alphanumeric());
+/// assert_eq!(Ok(("abc1", " and rest")), p.parse("abc1 and rest"));
+/// assert_eq!(Ok(("", "-_-")), p.parse("-_-"))
+/// ```
 pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
@@ -256,6 +291,16 @@ pub fn alphabetic1<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 /// Returns the first character in input if it satisfies the predicate.  If the
 /// predicate fails, [`StringError::Unmatched`] is returned.  If the string is
 /// empty, [`StringError::End`] is returned.
+///
+/// ```rust
+/// use komb::{Parser, string::{char, StringError}};
+///
+/// let p = char(|ch| ch == '1' || ch == 'a');
+///
+/// assert_eq!(Ok(('1', "rest")), p.parse("1rest"));
+/// assert_eq!(Ok(('a', "1")), p.parse("a1"));
+/// assert_eq!(Err(StringError::Unmatched), p.parse("x"));
+/// ```
 pub fn char<'a, F>(f: F) -> impl Parser<'a, str, char, StringError>
 where
 	F: Fn(char) -> bool,

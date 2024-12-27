@@ -1,8 +1,9 @@
 use core::ops::Range;
 
-/// A span denoting a subslice of a string or a byte slice, equivalent to a
-/// half-open range.  Unlike the latter, it guarantees that start is always
-/// smaller than the end.
+/// A span denoting a subslice of a string or a byte slice.
+///
+/// It's, equivalent to a half-open range.  But unlike the latter, it guarantees
+/// that start is always smaller than the end.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Span {
 	start: usize,
