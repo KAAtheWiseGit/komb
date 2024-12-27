@@ -190,14 +190,14 @@ pub fn any_char<'a>() -> impl Parser<'a, str, char, StringError> {
 pub fn one_of_char<'a>(
 	chars: &[char],
 ) -> impl Parser<'a, str, char, StringError> + use<'_, 'a> {
-	char(|ch| !chars.contains(&ch))
+	char(|ch| chars.contains(&ch))
 }
 
 /// Returns the first input char if it's *not* one of `chars`.
 pub fn none_of_char<'a>(
 	chars: &[char],
 ) -> impl Parser<'a, str, char, StringError> + use<'_, 'a> {
-	char(|ch| chars.contains(&ch))
+	char(|ch| !chars.contains(&ch))
 }
 
 pub fn digits1<'a>(radix: u32) -> impl Parser<'a, str, &'a str, StringError> {

@@ -5,7 +5,7 @@ use std::convert::Infallible;
 
 use komb::{
 	combinator::{choice, delimited, fold, optional},
-	string::{literal_char, literal, none_of_char, one_of0},
+	string::{literal, literal_char, none_of_char, one_of0},
 	PResult, Parser,
 };
 
@@ -57,8 +57,12 @@ fn string(input: &str) -> PResult<str, String, ()> {
 	)
 	.map_err(|_| ());
 
-	delimited(literal_char('"').map_err(|_| ()), p, literal_char('"').map_err(|_| ()))
-		.parse(input)
+	delimited(
+		literal_char('"').map_err(|_| ()),
+		p,
+		literal_char('"').map_err(|e| ()),
+	)
+	.parse(input)
 }
 
 fn array(input: &str) -> PResult<str, Vec<Value>, ()> {
