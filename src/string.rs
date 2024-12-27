@@ -166,16 +166,24 @@ pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
 	}
 }
 
+macro_rules! doc0to1 {
+	() => {
+		"Note that this will succeed even if it matches no characters. In this case it'll return an empty string pointing to the start of input as the output.  To fail in such cases use "
+	};
+}
+
+macro_rules! doc1to0 {
+	() => {
+		"Note that this will fail if it can't match at least a single character.  To return an empty string in such cases use "
+	};
+}
+
 /// Cuts off a prefix of a string for whose characters the predicate `f` returns
 /// `true`.
 ///
 /// If it hits the end of the string, the whole string will be returned and the
 /// remainder will be an empty string pointing to the end of input.
 ///
-// TODO: can this be made into a macro?
-/// Note that this function will succeed even if it matches no characters.  In
-/// this case it'll return an empty string pointing to the start of input as the
-/// output.  To fail in such cases use [`take_while1`].
 ///
 /// ```rust
 /// use komb::{Parser, string::{take_while0, StringError}};
@@ -184,6 +192,8 @@ pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
 /// assert_eq!(Ok(("abc1", " and rest")), p.parse("abc1 and rest"));
 /// assert_eq!(Ok(("", "-_-")), p.parse("-_-"))
 /// ```
+///
+#[doc=concat!(doc0to1!(), "[`", "take_while1", "`]")]
 pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
@@ -201,6 +211,9 @@ where
 	}
 }
 
+/// Matches a prefix until the first character which satisfies the predicate.
+///
+#[doc=concat!(doc0to1!(), "[`", "take_until1", "`]")]
 pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
@@ -208,30 +221,73 @@ where
 	take_while0(move |c| !f(c))
 }
 
+/// Matches the characters in `chars`.
+///
+#[doc=concat!(doc0to1!(), "[`", "one_of1", "`]")]
 pub fn one_of0<'a>(
 	chars: &[char],
 ) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
 	take_while0(move |c| chars.contains(&c))
 }
 
+/// Matches the characters not in `chars`.
+///
+#[doc=concat!(doc0to1!(), "[`", "none_of1", "`]")]
 pub fn none_of0<'a>(
 	chars: &[char],
 ) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
 	take_until0(move |c| chars.contains(&c))
 }
 
+/// Matches Unicode whitespace.
+///
+/// Uses [`char::is_whitespace`].
+///
+#[doc=concat!(doc0to1!(), "[`", "whitespace1", "`]")]
 pub fn whitespace0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while0(|c| c.is_whitespace())
 }
 
-pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
-	take_while0(|c| c.is_alphanumeric())
-}
-
+/// Matches alphabetic characters.
+///
+/// Uses [`char::is_alphabetic`].
+///
+#[doc=concat!(doc0to1!(), "[`", "alphabetic0", "`]")]
 pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while0(|c| c.is_alphabetic())
 }
 
+/// Matches alphanumeric characters.
+///
+/// Uses [`char::is_alphanumeric`].
+///
+/// ```rust
+/// use komb::{Parser, string::{alphanumeric0, StringError}};
+///
+/// let p = alphanumeric0();
+/// assert_eq!(Ok(("abc0", " rest")), p.parse("abc0 rest"));
+/// assert_eq!(Ok(("", "-_-")), p.parse("-_-"));
+/// assert_eq!(Ok(("", "")), p.parse(""));
+/// ```
+///
+#[doc=concat!(doc0to1!(), "[`", "alphanumeric1", "`]")]
+pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+	take_while0(|c| c.is_alphanumeric())
+}
+
+/// Cuts off a prefix of a string for whose characters the predicate `f` returns
+/// `true`.
+///
+/// ```rust
+/// use komb::{Parser, string::{take_while1, StringError}};
+///
+/// let p = take_while1(|ch| ch == '0' || ch == '1');
+///
+/// assert_eq!(Ok(("01010", "rest")), p.parse("01010rest"));
+/// assert_eq!(Err(StringError::Unmatched), p.parse("other"));
+/// ```
+///
+#[doc=concat!(doc1to0!(), "[`", "take_while0", "`]")]
 pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
@@ -260,6 +316,9 @@ where
 	}
 }
 
+/// Matches a prefix until the first character which satisfies the predicate.
+///
+#[doc=concat!(doc1to0!(), "[`", "take_until0", "`]")]
 pub fn take_until1<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
 where
 	F: Fn(char) -> bool,
@@ -267,26 +326,56 @@ where
 	take_while1(move |c| !f(c))
 }
 
+/// Matches the characters in `chars`.
+///
+#[doc=concat!(doc1to0!(), "[`", "one_of0", "`]")]
 pub fn one_of1<'a>(
 	chars: &[char],
 ) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
 	take_while1(move |c| chars.contains(&c))
 }
 
+/// Matches the characters not in `chars`.
+///
+#[doc=concat!(doc1to0!(), "[`", "none_of0", "`]")]
 pub fn none_of1<'a>(
 	chars: &[char],
 ) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
 	take_until1(move |c| chars.contains(&c))
 }
 
+/// Matches Unicode whitespace.
+///
+/// Uses [`char::is_whitespace`].
+///
+#[doc=concat!(doc1to0!(), "[`", "whitespace0", "`]")]
 pub fn whitespace1<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while1(|c| c.is_whitespace())
 }
 
+/// Matches alphabetic characters.
+///
+/// Uses [`char::is_alphabetic`].
+///
+#[doc=concat!(doc1to0!(), "[`", "alphabetic1", "`]")]
 pub fn alphanumeric1<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while1(|c| c.is_alphanumeric())
 }
 
+/// Matches alphanumeric characters.
+///
+/// Uses [`char::is_alphanumeric`].
+///
+/// ```rust
+/// use komb::{Parser, string::{StringError, alphabetic1}};
+///
+/// let p = alphabetic1();
+///
+/// assert_eq!(Ok(("abcXYZ", " rest")), p.parse("abcXYZ rest"));
+/// assert_eq!(Err(StringError::Unmatched), p.parse("_ident"))
+/// ```
+///
+#[doc=concat!(doc1to0!(), "[`", "alphanumeric1", "`]")]
 pub fn alphabetic1<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	take_while1(|c| c.is_alphabetic())
 }
@@ -343,12 +432,26 @@ pub fn none_of_char<'a>(
 	char(|ch| !chars.contains(&ch))
 }
 
+/// Matches digits in a radix.
+///
+/// The behaviour is the as that of [`char::is_digit`].
+///
+/// ```rust
+/// use komb::{Parser, string::{digits1, StringError}};
+///
+/// let p = digits1(16);
+///
+/// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
+/// ```
 pub fn digits1<'a>(radix: u32) -> impl Parser<'a, str, &'a str, StringError> {
 	take_while1(move |c| c.is_digit(radix))
 }
 
 macro_rules! impl_parse_uint {
 	($name:ident, $type:ty) => {
+		#[doc=concat!("Parses a decimal ", stringify!($type), ".")]
+		///
+		/// Plus or minus signs aren't accepted.
 		pub fn $name<'a>(
 		) -> impl Parser<'a, str, ($type, &'a str), StringError> {
 			|input: &'a str| {
