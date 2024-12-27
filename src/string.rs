@@ -14,9 +14,9 @@ pub enum StringError {
 	/// Indicates that the input string has ended, running out of content.
 	///
 	/// It's most often returned when applying combinators to an empty
-	/// string and in a few rare cases like [`take`].  Most other functions,
-	/// including [`literal`], return
-	/// [`Unmatched`][`StringError::Unmatched`] on length mismatch.
+	/// string and in a few rare cases like [`take`].  Most other
+	/// implementations, including the parser implementation on `str`,
+	/// return [`Unmatched`][`StringError::Unmatched`] on length mismatch.
 	#[error("reached the end of the input string")]
 	End,
 	/// A kitchen-sink for all kinds of parser failures.  In general, it
@@ -57,17 +57,17 @@ impl<'a> Parser<'a, str, char, StringError> for char {
 /// other Unicode characters won't be accounted for.
 ///
 /// ```rust
-/// use komb::{Parser, string::{literal_anycase, StringError}};
+/// use komb::{Parser, string::{anycase, StringError}};
 ///
-/// let p = literal_anycase("select");
+/// let p = anycase("select");
 ///
 /// assert_eq!(Ok(("select", " from table")), p.parse("select from table"));
 /// assert_eq!(Ok(("SELECT", " FROM table")), p.parse("SELECT FROM table"));
 ///
-/// let p = literal_anycase("löve2d");
+/// let p = anycase("löve2d");
 /// assert_eq!(Err(StringError::Unmatched), p.parse("LÖVE2D"));
 /// ```
-pub fn literal_anycase<'a>(
+pub fn anycase<'a>(
 	literal: &'static str,
 ) -> impl Parser<'a, str, &'a str, StringError> {
 	move |input: &'a str| {
