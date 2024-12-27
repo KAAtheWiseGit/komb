@@ -1,6 +1,7 @@
 //! Type-agnostic combinators which combine other parsers.
 
 mod choice;
+mod tuple;
 pub use choice::choice;
 
 use core::convert::Infallible;
