@@ -17,6 +17,18 @@ pub enum StringError {
 /// Matches the exact literal provided, returns it as an `&str` reference to the
 /// input, which can be used with [`Span`][crate::Span] to determine its
 /// location.
+///
+/// ```rust
+/// use komb::{Parser, string::{literal, StringError}};
+///
+/// # fn main() {
+/// let p = literal("Hello");
+///
+/// assert_eq!(Ok(("Hello", " world")), p.parse("Hello world"));
+/// assert_eq!(Err(StringError::Unmatched), p.parse("other"));
+/// assert_eq!(Err(StringError::End), p.parse(""));
+/// # }
+/// ```
 pub fn literal<'a>(
 	literal: &'static str,
 ) -> impl Parser<'a, str, &'a str, StringError> {
@@ -34,6 +46,20 @@ pub fn literal<'a>(
 
 /// Matches a `literal` ignoring the case.  This function is ASCII-only, all
 /// other Unicode characters won't be accounted for.
+///
+/// ```rust
+/// use komb::{Parser, string::{literal_anycase, StringError}};
+///
+/// # fn main() {
+/// let p = literal_anycase("select");
+///
+/// assert_eq!(Ok(("select", " from table")), p.parse("select from table"));
+/// assert_eq!(Ok(("SELECT", " FROM table")), p.parse("SELECT FROM table"));
+///
+/// let p = literal_anycase("löve2d");
+/// assert_eq!(Err(StringError::Unmatched), p.parse("LÖVE2D"));
+/// # }
+/// ```
 pub fn literal_anycase<'a>(
 	literal: &'static str,
 ) -> impl Parser<'a, str, &'a str, StringError> {
@@ -66,6 +92,16 @@ pub fn literal_anycase<'a>(
 
 /// Matches either a `\n` or `\r\n` line ending, returns it as an `&str`
 /// reference.
+///
+/// ```rust
+/// use komb::{Parser, string::{line_end, alphanumeric0, StringError}};
+///
+/// # fn main() {
+/// let p = alphanumeric0().before(line_end());
+///
+/// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
+/// # }
+/// ```
 pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	choice((literal("\n"), literal("\r\n")))
 }
