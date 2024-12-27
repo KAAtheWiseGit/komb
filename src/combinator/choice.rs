@@ -13,9 +13,9 @@ where
 /// ```rust
 /// use komb::Parser;
 /// use komb::combinator::choice;
-/// use komb::string::{StringError, literal};
+/// use komb::string::StringError;
 ///
-/// let p = choice((literal("a"), literal("b"), literal("c")));
+/// let p = choice(("a", "b", "c"));
 /// assert_eq!(Ok(("a", " rest")), p.parse("a rest"));
 /// assert_eq!(Ok(("b", " rest")), p.parse("b rest"));
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
@@ -76,16 +76,14 @@ mod test {
 
 	#[test]
 	fn test_macro() {
-		use crate::string::literal_char;
-
-		let parser = choice((literal_char('a'), literal_char('b')));
+		let parser = choice(('a', 'b'));
 		let result = parser.parse("bc");
 		assert_eq!(Ok(('b', "c")), result);
 
 		let parser = choice((
-			literal_char('a'),
-			literal_char('b'),
-			literal_char('c'),
+			'a',
+			'b',
+			'c',
 		));
 		let result = parser.parse("cx");
 		assert_eq!(Ok(('c', "x")), result);

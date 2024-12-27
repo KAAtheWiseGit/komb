@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use core::num::ParseIntError;
 
-use crate::{combinator::choice, Parser};
+use crate::{combinator::choice, PResult, Parser};
 
 /// A unified error types for all `str` parsers.
 #[derive(Debug, PartialEq, Eq, Error)]
@@ -31,31 +31,25 @@ pub enum StringError {
 	ParseInt(ParseIntError),
 }
 
-/// Matches the exact literal provided, returns it as an `&str` reference to the
-/// input, which can be used with [`Span`][crate::Span] to determine its
-/// location.
-///
-/// ```rust
-/// use komb::{Parser, string::{literal, StringError}};
-///
-/// let p = literal("Hello");
-///
-/// assert_eq!(Ok(("Hello", " world")), p.parse("Hello world"));
-/// assert_eq!(Err(StringError::Unmatched), p.parse("other"));
-/// assert_eq!(Err(StringError::End), p.parse(""));
-/// ```
-pub fn literal<'a>(
-	literal: &'static str,
-) -> impl Parser<'a, str, &'a str, StringError> {
-	move |input: &'a str| {
-		if input.starts_with(literal) {
-			let length = literal.len();
+impl<'a> Parser<'a, str, &'a str, StringError> for &str {
+	fn parse(
+		&self,
+		input: &'a str,
+	) -> PResult<'a, str, &'a str, StringError> {
+		if input.starts_with(self) {
+			let length = self.len();
 			Ok((&input[..length], &input[length..]))
 		} else if input.is_empty() {
 			Err(StringError::End)
 		} else {
 			Err(StringError::Unmatched)
 		}
+	}
+}
+
+impl<'a> Parser<'a, str, char, StringError> for char {
+	fn parse(&self, input: &'a str) -> PResult<'a, str, char, StringError> {
+		char(move |ch| ch == *self).parse(input)
 	}
 }
 
@@ -114,15 +108,15 @@ pub fn literal_anycase<'a>(
 /// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
 /// ```
 pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
-	choice((literal("\n"), literal("\r\n")))
+	choice(("\n", "\r\n"))
 }
 
 /// Succeeds if the input is empty.
 ///
 /// ```rust
-/// use komb::{Parser, string::{literal, eof, StringError}};
+/// use komb::{Parser, string::{eof, StringError}};
 ///
-/// let p = literal("Hello world").before(eof());
+/// let p = "Hello world".before(eof());
 ///
 /// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
 /// assert_eq!(Err(StringError::Unmatched), p.parse("Hello world and then some"));
@@ -308,12 +302,6 @@ where
 			Err(StringError::Unmatched)
 		}
 	}
-}
-
-/// Returns the first char of the input if it's equal to `c` or an error
-/// otherwise.
-pub fn literal_char<'a>(c: char) -> impl Parser<'a, str, char, StringError> {
-	char(move |ch| ch == c)
 }
 
 /// Returns whatever char is first in input.  It can return [`StringError::End`]

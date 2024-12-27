@@ -5,7 +5,7 @@ use std::convert::Infallible;
 
 use komb::{
 	combinator::{choice, delimited, fold, optional},
-	string::{literal, literal_char, none_of_char, one_of0},
+	string::{none_of_char, one_of0},
 	PResult, Parser,
 };
 
@@ -31,8 +31,8 @@ fn bool(input: &str) -> PResult<str, bool, ()> {
 	delimited(
 		whitespace,
 		choice((
-			literal("true").map_out(|_| true).map_err(|_| ()),
-			literal("false").map_out(|_| false).map_err(|_| ()),
+			"true".map_out(|_| true).map_err(|_| ()),
+			"false".map_out(|_| false).map_err(|_| ()),
 		)),
 		whitespace,
 	)
@@ -42,14 +42,14 @@ fn bool(input: &str) -> PResult<str, bool, ()> {
 fn string(input: &str) -> PResult<str, String, ()> {
 	let p = fold(
 		choice((
-			literal("\\\"").map_out(|_| '\"'),
-			literal("\\\\").map_out(|_| '\\'),
-			literal("\\/").map_out(|_| '/'),
-			literal("\\b").map_out(|_| '\x08'),
-			literal("\\f").map_out(|_| '\x0C'),
-			literal("\\n").map_out(|_| '\n'),
-			literal("\\r").map_out(|_| '\r'),
-			literal("\\t").map_out(|_| '\t'),
+			"\\\"".map_out(|_| '\"'),
+			"\\\\".map_out(|_| '\\'),
+			"\\/".map_out(|_| '/'),
+			"\\b".map_out(|_| '\x08'),
+			"\\f".map_out(|_| '\x0C'),
+			"\\n".map_out(|_| '\n'),
+			"\\r".map_out(|_| '\r'),
+			"\\t".map_out(|_| '\t'),
 			none_of_char(&['\\', '"']),
 		)),
 		String::new(),
@@ -58,20 +58,20 @@ fn string(input: &str) -> PResult<str, String, ()> {
 	.map_err(|_| ());
 
 	delimited(
-		literal_char('"').map_err(|_| ()),
+		'"'.map_err(|_| ()),
 		p,
-		literal_char('"').map_err(|e| ()),
+		'"'.map_err(|e| ()),
 	)
 	.parse(input)
 }
 
 fn array(input: &str) -> PResult<str, Vec<Value>, ()> {
-	let p = value.before(optional(literal_char(',')).map_err(|_| ()));
+	let p = value.before(optional(',').map_err(|_| ()));
 	let folded = fold(p, Vec::new(), |acc, value| acc.push(value));
 	let delimited = delimited(
-		literal_char('[').map_err(|_| ()),
+		'['.map_err(|_| ()),
 		folded,
-		literal_char(']').map_err(|_| ()),
+		']'.map_err(|_| ()),
 	);
 
 	delimited.parse(input)
