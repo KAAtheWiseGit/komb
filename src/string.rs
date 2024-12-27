@@ -3,7 +3,7 @@ use thiserror::Error;
 use core::convert::Infallible;
 use core::num::ParseIntError;
 
-use crate::{combinator::choice, PResult, Parser};
+use crate::{combinator::choice, Parser};
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum StringError {
@@ -15,6 +15,9 @@ pub enum StringError {
 	ParseInt(ParseIntError),
 }
 
+/// Matches the exact literal provided, returns it as an `&str` reference to the
+/// input, which can be used with [`Span`][crate::Span] to determine its
+/// location.
 pub fn literal<'a>(
 	literal: &'static str,
 ) -> impl Parser<'a, str, &'a str, StringError> {
@@ -62,10 +65,14 @@ pub fn literal_anycase<'a>(
 	}
 }
 
+/// Matches either a `\n` or `\r\n` line ending, returns it as an `&str`
+/// reference.
 pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	choice((literal("\n"), literal("\r\n")))
 }
 
+/// Takes exactly `length` characters (not bytes) from the input.  Returns
+/// [`StringError::End`] if the string isn't long enough.
 pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
 	move |input: &'a str| {
 		let mut current_length = 0;
@@ -193,7 +200,7 @@ pub fn none_of_char<'a>(
 	char(|ch| chars.contains(&ch))
 }
 
-pub fn digits<'a>(radix: u32) -> impl Parser<'a, str, &'a str, StringError> {
+pub fn digits1<'a>(radix: u32) -> impl Parser<'a, str, &'a str, StringError> {
 	take_while1(move |c| c.is_digit(radix))
 }
 
@@ -202,7 +209,7 @@ macro_rules! impl_parse_uint {
 		pub fn $name<'a>(
 		) -> impl Parser<'a, str, ($type, &'a str), StringError> {
 			|input: &'a str| {
-				let (s, rest) = digits(10)
+				let (s, rest) = digits1(10)
 					.parse(input)
 					.map_err(|_| {
 						if input.chars()
