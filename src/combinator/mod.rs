@@ -61,6 +61,21 @@ where
 /// Matches the `content` parser with `left` and `right` at the start and the
 /// end respectively.  If any one of the three parsers fails, this error is
 /// returned.  Otherwise the input of `content` is returned.
+///
+/// ```rust
+/// use komb::{Parser, combinator::delimited};
+/// use komb::string::{literal_char, alphabetic0, StringError};
+///
+/// let p = delimited(
+/// 	literal_char('('),
+/// 	alphabetic0(),
+/// 	literal_char(')'),
+/// );
+///
+/// assert_eq!(Ok(("word", "")), p.parse("(word)"));
+/// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
+/// assert_eq!(Err(StringError::End), p.parse("(notclosed"));
+/// ```
 pub fn delimited<'a, I, E, O0, P0, O1, P1, O2, P2>(
 	left: P0,
 	content: P1,
@@ -127,38 +142,5 @@ where
 		}
 
 		Ok((acc, input))
-	}
-}
-
-#[cfg(test)]
-mod test {
-	use super::*;
-	use crate::string::*;
-
-	#[test]
-	fn playground() {
-		let p = optional(take_while1(|c| c.is_ascii_lowercase()));
-
-		assert_eq!(Ok((None, "ABCD")), p.parse("ABCD"));
-	}
-
-	#[test]
-	fn test_delimited() {
-		let del = delimited(
-			literal_char('('),
-			alphabetic0(),
-			literal_char(')'),
-		);
-
-		assert_eq!(Ok(("word", "")), del.parse("(word)"));
-	}
-
-	#[test]
-	fn test_fold() {
-		let p = fold(literal_char('a'), String::new(), |acc, ch| {
-			acc.push(ch);
-		});
-
-		assert_eq!(Ok((String::from("aa"), "b")), p.parse("aab"));
 	}
 }
