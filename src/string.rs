@@ -140,16 +140,58 @@ where
 	F: Fn(char) -> bool,
 {
 	move |input: &'a str| {
-		let Some(ch) = input.chars().next() else {
-			return Err(StringError::End);
-		};
+		let mut index = 0;
+		let mut at_least_one = false;
 
-		if !f(ch) {
-			return Err(StringError::Unmatched);
+		for (i, char) in input.char_indices() {
+			if !f(char) {
+				if at_least_one {
+					return Ok((&input[..i], &input[i..]));
+				} else {
+					return Err(StringError::Unmatched);
+				}
+			}
+			index = i + char.len_utf8();
+			at_least_one = true;
 		}
 
-		Ok(take_while0(&f).parse(input).unwrap())
+		if at_least_one {
+			return Ok((&input[..index], &input[index..]));
+		} else {
+			return Err(StringError::Unmatched);
+		}
 	}
+}
+
+pub fn take_until1<'a, F>(f: F) -> impl Parser<'a, str, &'a str, StringError>
+where
+	F: Fn(char) -> bool,
+{
+	take_while1(move |c| !f(c))
+}
+
+pub fn one_of1<'a>(
+	chars: &[char],
+) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
+	take_while1(move |c| chars.contains(&c))
+}
+
+pub fn none_of1<'a>(
+	chars: &[char],
+) -> impl Parser<'a, str, &'a str, StringError> + use<'_, 'a> {
+	take_until1(move |c| chars.contains(&c))
+}
+
+pub fn whitespace1<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+	take_while1(|c| c.is_whitespace())
+}
+
+pub fn alphanumeric1<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+	take_while1(|c| c.is_alphanumeric())
+}
+
+pub fn alphabetic1<'a>() -> impl Parser<'a, str, &'a str, StringError> {
+	take_while1(|c| c.is_alphabetic())
 }
 
 // Character combinators
