@@ -50,12 +50,10 @@ pub type PResult<'a, I, O, E> = Result<(O, &'a I), E>;
 ///     Ok((out, rest))
 /// }
 ///
-/// # fn main() {
 /// assert_eq!(Ok((10, "")), binary_number.parse("0b1010"));
 /// assert_eq!(Ok((33, " + 1")), binary_number.parse("0b100001 + 1"));
 /// assert_eq!(Err(MyError), binary_number.parse("0xDEADBEEF"));
 /// assert_eq!(Err(MyError), binary_number.parse("0b012"));
-/// # }
 /// ```
 ///
 /// Most custom parsers can be created using the provided ones.  Since these
@@ -86,11 +84,9 @@ pub type PResult<'a, I, O, E> = Result<(O, &'a I), E>;
 ///     }
 /// }
 ///
-/// # fn main() {
 /// assert_eq!(Ok((10, "")), number(2).parse("1010"));
 /// assert_eq!(Ok((7911, " + 1")), number(16).parse("1ee7 + 1"));
 /// assert_eq!(Err(MyError), number(10).parse("Not a number"));
-/// # }
 /// ```
 ///
 /// Finally, the `Parser` trait can be implemented manually to allow for more

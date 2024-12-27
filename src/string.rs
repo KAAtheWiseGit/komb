@@ -38,13 +38,11 @@ pub enum StringError {
 /// ```rust
 /// use komb::{Parser, string::{literal, StringError}};
 ///
-/// # fn main() {
 /// let p = literal("Hello");
 ///
 /// assert_eq!(Ok(("Hello", " world")), p.parse("Hello world"));
 /// assert_eq!(Err(StringError::Unmatched), p.parse("other"));
 /// assert_eq!(Err(StringError::End), p.parse(""));
-/// # }
 /// ```
 pub fn literal<'a>(
 	literal: &'static str,
@@ -67,7 +65,6 @@ pub fn literal<'a>(
 /// ```rust
 /// use komb::{Parser, string::{literal_anycase, StringError}};
 ///
-/// # fn main() {
 /// let p = literal_anycase("select");
 ///
 /// assert_eq!(Ok(("select", " from table")), p.parse("select from table"));
@@ -75,7 +72,6 @@ pub fn literal<'a>(
 ///
 /// let p = literal_anycase("löve2d");
 /// assert_eq!(Err(StringError::Unmatched), p.parse("LÖVE2D"));
-/// # }
 /// ```
 pub fn literal_anycase<'a>(
 	literal: &'static str,
@@ -113,11 +109,9 @@ pub fn literal_anycase<'a>(
 /// ```rust
 /// use komb::{Parser, string::{line_end, alphanumeric0, StringError}};
 ///
-/// # fn main() {
 /// let p = alphanumeric0().before(line_end());
 ///
 /// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
-/// # }
 /// ```
 pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 	choice((literal("\n"), literal("\r\n")))
@@ -128,12 +122,10 @@ pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, StringError> {
 /// ```rust
 /// use komb::{Parser, string::{literal, eof, StringError}};
 ///
-/// # fn main() {
 /// let p = literal("Hello world").before(eof());
 ///
 /// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
 /// assert_eq!(Err(StringError::Unmatched), p.parse("Hello world and then some"));
-/// # }
 /// ```
 pub fn eof<'a>() -> impl Parser<'a, str, (), StringError> {
 	move |input: &'a str| {

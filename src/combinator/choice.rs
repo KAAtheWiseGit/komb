@@ -15,13 +15,11 @@ where
 /// use komb::combinator::choice;
 /// use komb::string::{StringError, literal};
 ///
-/// # fn main() {
 /// let p = choice((literal("a"), literal("b"), literal("c")));
 /// assert_eq!(Ok(("a", " rest")), p.parse("a rest"));
 /// assert_eq!(Ok(("b", " rest")), p.parse("b rest"));
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
 /// assert_eq!(Err(StringError::Unmatched), p.parse("d"));
-/// # }
 /// ```
 pub fn choice<'a, I, O, E, P>(parsers: P) -> impl Parser<'a, I, O, E>
 where

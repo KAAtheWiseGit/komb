@@ -13,12 +13,10 @@ use crate::Parser;
 /// ```rust
 /// use komb::{Parser, combinator::optional, string::literal};
 ///
-/// # fn main() {
 /// let p = optional(literal("lit"));
 ///
 /// assert_eq!(Ok((Some("lit"), " rest")), p.parse("lit rest"));
 /// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
-/// # }
 /// ```
 pub fn optional<'a, I, O, E, P>(
 	parser: P,
@@ -41,12 +39,10 @@ where
 /// ```rust
 /// use komb::{Parser, combinator::not, string::{literal, StringError}};
 ///
-/// # fn main() {
 /// let p = not(literal("str"));
 ///
 /// assert_eq!(Err("str"), p.parse("str"));
 /// assert_eq!(Ok((StringError::Unmatched, "other")), p.parse("other"));
-/// # }
 /// ```
 pub fn not<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, E, O>
 where
@@ -95,7 +91,6 @@ where
 /// ```rust
 /// use komb::{Parser, combinator::fold, string::{any_char, literal_char}};
 ///
-/// # fn main() {
 /// let p = fold(
 ///     any_char().before(literal_char(',')),
 ///     Vec::new(),
@@ -107,7 +102,6 @@ where
 /// let (output, _) = p.parse("a,b,c,d,").unwrap();
 ///
 /// assert_eq!(vec!['a', 'b', 'c', 'd'], output);
-/// # }
 /// ```
 pub fn fold<'a, I, O, OX, E, P, F>(
 	parser: P,
