@@ -150,7 +150,7 @@ mod test {
 	fn test_delimited() {
 		let del = delimited(
 			literal_char('('),
-			alphabetic0().map_err(|_| StringError::End),
+			alphabetic0(),
 			literal_char(')'),
 		);
 
