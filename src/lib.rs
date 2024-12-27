@@ -6,14 +6,99 @@ pub mod string;
 
 pub use span::Span;
 
+/// The result type returned by parsers.
+///
+/// The lifetime `'a` is applied to the input of type `I`, which is typically
+/// unsized (usually `str` or `[u8]`).  If the parser succeeds, an `(output,
+/// rest)` tuple is returned, where `output` is the type created by the parser
+/// and `rest` is a sub-slice of input with the parsed part cut off.
 pub type PResult<'a, I, O, E> = Result<(O, &'a I), E>;
 
+/// The core trait which defines parsers.
+///
+/// This trait is automatically [implemented for functions][impl] which take a
+/// reference to the input and return [`PResult`].  So, one can define a parsing
+/// function to be used directly:
+///
+/// ```rust
+/// use komb::{Parser, PResult};
+///
+/// #[derive(Debug, PartialEq)]
+/// struct MyError;
+///
+/// fn binary_number<'a>(input: &'a str) -> PResult<'a, str, usize, MyError> {
+///     let Some(rest) = input.strip_prefix("0b") else {
+///         return Err(MyError);
+///     };
+///
+///     // The end of digits in the number or the whole string, if it only
+///     // contains digits.
+///     let end = rest.find(|ch: char| !ch.is_ascii_digit()).unwrap_or(rest.len());
+///
+///     let (digits, rest) = (&rest[..end], &rest[end..]);
+///     let Ok(out) = usize::from_str_radix(digits, 2) else {
+///         return Err(MyError);
+///     };
+///
+///     Ok((out, rest))
+/// }
+///
+/// # fn main() {
+/// assert_eq!(Ok((10, "")), binary_number.parse("0b1010"));
+/// assert_eq!(Ok((33, " + 1")), binary_number.parse("0b100001 + 1"));
+/// assert_eq!(Err(MyError), binary_number.parse("0xDEADBEEF"));
+/// assert_eq!(Err(MyError), binary_number.parse("0b012"));
+/// # }
+/// ```
+///
+/// Most custom parsers can be created using the provided ones.  Since these
+/// return unnamed closures, `-> impl Parser<'a, I, O, E>` has to be used as the
+/// return type.
+///
+/// ```rust
+/// use komb::Parser;
+///
+/// #[derive(Debug, PartialEq)]
+/// struct MyError;
+///
+/// fn number<'a>(radix: u32) -> impl Parser<'a, str, usize, MyError> {
+///     assert!(radix >= 2 && radix <= 36);
+///
+///     // `move` captures `radix` for each created parser
+///     move |input: &'a str| {
+///         let end = input
+///             .find(|ch: char| !ch.is_digit(radix))
+///             .unwrap_or(input.len());
+///
+///         let (digits, rest) = (&input[..end], &input[end..]);
+///         let Ok(out) = usize::from_str_radix(digits, radix) else {
+///             return Err(MyError);
+///         };
+///
+///         Ok((out, rest))
+///     }
+/// }
+///
+/// # fn main() {
+/// assert_eq!(Ok((10, "")), number(2).parse("1010"));
+/// assert_eq!(Ok((7911, " + 1")), number(16).parse("1ee7 + 1"));
+/// assert_eq!(Err(MyError), number(10).parse("Not a number"));
+/// # }
+/// ```
+///
+/// Finally, the `Parser` trait can be implemented manually to allow for more
+/// complex behavior.  In this case only the `parse` method needs to be
+/// implemented.  The implementation mustn't overwrite any of the [provided
+/// methods](#provided-methods).
+///
+/// [impl]: #impl-Parser<'a,+I,+O,+E>-for-F
 pub trait Parser<'a, I, O, E>
 where
 	I: 'a + ?Sized,
 {
 	fn parse(&self, input: &'a I) -> PResult<'a, I, O, E>;
 
+	/// Converts output and/or error types.  Useful for wrapping errors.
 	fn into<OX, EX>(self) -> impl Parser<'a, I, OX, EX>
 	where
 		Self: Sized,
@@ -26,6 +111,8 @@ where
 		}
 	}
 
+	/// Applies a transformation to the output or does nothing if the parser
+	/// returns an error.
 	fn map_out<OX, F>(self, f: F) -> impl Parser<'a, I, OX, E>
 	where
 		Self: Sized,
@@ -36,6 +123,8 @@ where
 		}
 	}
 
+	/// Applies a transformation to the error or does nothing if the parse
+	/// succeeds.
 	fn map_err<EX, F>(self, f: F) -> impl Parser<'a, I, O, EX>
 	where
 		Self: Sized,
