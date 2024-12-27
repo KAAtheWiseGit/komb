@@ -99,6 +99,10 @@ pub trait Parser<'a, I, O, E>
 where
 	I: 'a + ?Sized,
 {
+	/// The core parsing method.
+	///
+	/// See the general [`Parser`] and [`PResult`] documentations for
+	/// pointers on implementing it.
 	fn parse(&self, input: &'a I) -> PResult<'a, I, O, E>;
 
 	/// Converts output and/or error types.  Useful for wrapping errors.
