@@ -1,10 +1,5 @@
-//! Komb is a basic parser combinator library.  It borrows the source directly
-//! operating on `&str` and `[u8]`, allowing zero-copy parsing.  Due to this
-//! Komb doesn't support streaming.  It is also generic over the error type and
-//! doesn't provide its own.
-
-// TODO: point to examples
-
+// TODO: examples
+#![doc = include_str!("../README.md")]
 #![cfg_attr(not(test), no_std)]
 
 pub mod combinator;
