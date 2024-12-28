@@ -2,6 +2,10 @@
 name = "komb"
 version = "0.1.0"
 edition = "2021"
+license = "MPL-2.0"
+authors = ["Andrej Kolčin <self@kaathewise.net>"]
+description = "A primitive parser combinator library"
+repository = "https://github.com/kaathewisegit/komb"
 
 [dependencies]
 thiserror = { version = "2.0.4", default-features = false }
