@@ -1,8 +1,7 @@
-#![allow(unused)]
 #![allow(missing_docs)]
+#![allow(dead_code)]
 
 use std::collections::HashMap;
-use std::convert::Infallible;
 
 use komb::{
 	combinator::{choice, delimited, fold, optional},
@@ -123,7 +122,7 @@ fn value(input: &str) -> PResult<str, Value, Error> {
 		)),
 		whitespace(),
 	)
-	.map_err(|e| Error::new("Failed to match a JSON value"))
+	.map_err(|_| Error::new("Failed to match a JSON value"))
 	.parse(input)
 }
 
