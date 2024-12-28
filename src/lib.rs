@@ -100,8 +100,10 @@ where
 	/// pointers on implementing it.
 	fn parse(&self, input: &'a I) -> PResult<'a, I, O, E>;
 
-	/// Converts output and/or error types.  Useful for wrapping errors.
-	fn into<OX, EX>(self) -> impl Parser<'a, I, OX, EX>
+	/// Converts output and/or error types via the `Into` trait.
+	///
+	/// Useful for converting error types.
+	fn coerce<OX, EX>(self) -> impl Parser<'a, I, OX, EX>
 	where
 		Self: Sized,
 		O: Into<OX>,
