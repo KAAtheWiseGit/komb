@@ -68,9 +68,9 @@ where
 /// use komb::string::{alphabetic0, StringError};
 ///
 /// let p = delimited(
-/// 	'(',
-/// 	alphabetic0(),
-/// 	')',
+///     '(',
+///     alphabetic0(),
+///     ')',
 /// );
 ///
 /// assert_eq!(Ok(("word", "")), p.parse("(word)"));

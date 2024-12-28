@@ -309,9 +309,9 @@ where
 		}
 
 		if at_least_one {
-			return Ok((&input[..index], &input[index..]));
+			Ok((&input[..index], &input[index..]))
 		} else {
-			return Err(StringError::Unmatched);
+			Err(StringError::Unmatched)
 		}
 	}
 }
