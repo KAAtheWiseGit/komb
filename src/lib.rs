@@ -4,9 +4,13 @@
 extern crate alloc;
 
 pub mod combinator;
+mod context;
+mod error;
 mod span;
 pub mod string;
 
+pub use context::Context;
+pub use error::Error;
 pub use span::Span;
 
 /// The result type returned by parsers.
