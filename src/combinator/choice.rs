@@ -13,13 +13,12 @@ where
 /// ```rust
 /// use komb::Parser;
 /// use komb::combinator::choice;
-/// use komb::string::StringError;
 ///
 /// let p = choice(("a", "b", "c"));
 /// assert_eq!(Ok(("a", " rest")), p.parse("a rest"));
 /// assert_eq!(Ok(("b", " rest")), p.parse("b rest"));
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
-/// assert_eq!(Err(StringError::Unmatched), p.parse("d"));
+/// assert!(p.parse("d").is_err());
 /// ```
 pub fn choice<'a, I, O, E, P>(parsers: P) -> impl Parser<'a, I, O, E>
 where

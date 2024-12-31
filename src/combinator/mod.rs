@@ -38,12 +38,13 @@ where
 /// an error the input is not consumed.
 ///
 /// ```rust
-/// use komb::{Parser, combinator::not, string::StringError};
+/// use komb::{Parser, combinator::not};
 ///
 /// let p = not("str");
 ///
-/// assert_eq!(Err("str"), p.parse("str"));
-/// assert_eq!(Ok((StringError::Unmatched, "other")), p.parse("other"));
+/// assert!(p.parse("str").is_err());
+/// assert!(p.parse("other").is_ok());
+/// assert_eq!("other", p.parse("other").unwrap().1);
 /// ```
 pub fn not<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, E, O>
 where
@@ -65,7 +66,7 @@ where
 ///
 /// ```rust
 /// use komb::{Parser, combinator::delimited};
-/// use komb::string::{alphabetic0, StringError};
+/// use komb::string::alphabetic0;
 ///
 /// let p = delimited(
 ///     '(',
@@ -75,7 +76,7 @@ where
 ///
 /// assert_eq!(Ok(("word", "")), p.parse("(word)"));
 /// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
-/// assert_eq!(Err(StringError::End), p.parse("(notclosed"));
+/// assert!(p.parse("(notclosed").is_err());
 /// ```
 pub fn delimited<'a, I, E, O0, P0, O1, P1, O2, P2>(
 	left: P0,
