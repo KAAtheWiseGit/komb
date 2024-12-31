@@ -1,10 +1,10 @@
 use crate::{PResult, Parser};
 
-pub trait Choice<'a, I, O, E>
+pub trait Choice<'a, I, O>
 where
 	I: 'a + ?Sized,
 {
-	fn choice(&self, input: &'a I) -> PResult<'a, I, O, E>;
+	fn choice(&self, input: &'a I) -> PResult<'a, I, O>;
 }
 
 /// Picks the first succeeding parser and returns it's output.  If all parsers
@@ -20,23 +20,23 @@ where
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
 /// assert!(p.parse("d").is_err());
 /// ```
-pub fn choice<'a, I, O, E, P>(parsers: P) -> impl Parser<'a, I, O, E>
+pub fn choice<'a, I, O, P>(parsers: P) -> impl Parser<'a, I, O>
 where
 	I: 'a + ?Sized,
-	P: Choice<'a, I, O, E>,
+	P: Choice<'a, I, O>,
 {
 	move |input: &'a I| parsers.choice(input)
 }
 
 macro_rules! impl_choice {
 	($($type:ident: $index:tt),*; $lastp:ident: $lasti:tt) => {
-		impl<'a, I, O, E, $($type,)* $lastp> Choice<'a, I, O, E> for ($($type,)*$lastp)
+		impl<'a, I, O, $($type,)* $lastp> Choice<'a, I, O> for ($($type,)*$lastp)
 		where
 			I: 'a + ?Sized,
-			$($type: Parser<'a, I, O, E>,)*
-			$lastp: Parser<'a, I, O, E>,
+			$($type: Parser<'a, I, O>,)*
+			$lastp: Parser<'a, I, O>,
 		{
-			fn choice(&self, input: &'a I) -> PResult<'a, I, O, E> {
+			fn choice(&self, input: &'a I) -> PResult<'a, I, O> {
 				$(
 				if let Ok((out, rest)) = self.$index.parse(input) {
 					return Ok((out, rest));

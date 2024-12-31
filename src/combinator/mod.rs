@@ -4,9 +4,7 @@ mod choice;
 mod tuple;
 pub use choice::choice;
 
-use core::convert::Infallible;
-
-use crate::Parser;
+use crate::{Context, Error, Parser};
 
 /// Makes the passed parser optional.  That is, it'll return `Ok((None, input))`
 /// if the underlying parser fails.  The input won't be consumed.
@@ -19,12 +17,10 @@ use crate::Parser;
 /// assert_eq!(Ok((Some("lit"), " rest")), p.parse("lit rest"));
 /// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
 /// ```
-pub fn optional<'a, I, O, E, P>(
-	parser: P,
-) -> impl Parser<'a, I, Option<O>, Infallible>
+pub fn optional<'a, I, O, P>(parser: P) -> impl Parser<'a, I, Option<O>>
 where
 	I: 'a + ?Sized,
-	P: Parser<'a, I, O, E>,
+	P: Parser<'a, I, O>,
 {
 	move |input: &'a I| match parser.parse(input) {
 		Ok((out, rest)) => Ok((Some(out), rest)),
@@ -46,13 +42,16 @@ where
 /// assert!(p.parse("other").is_ok());
 /// assert_eq!("other", p.parse("other").unwrap().1);
 /// ```
-pub fn not<'a, I, O, E, P>(parser: P) -> impl Parser<'a, I, E, O>
+pub fn not<'a, I, O, P>(parser: P) -> impl Parser<'a, I, Error>
 where
 	I: 'a + ?Sized,
-	P: Parser<'a, I, O, E>,
+	P: Parser<'a, I, O>,
 {
 	move |input: &'a I| match parser.parse(input) {
-		Ok((out, _)) => Err(out),
+		Ok((_, _)) => Err(Context::from_message(
+			"Parser inside `not` succeeded",
+		)
+		.into()),
 		Err(err) => Ok((err, input)),
 	}
 }
@@ -78,16 +77,16 @@ where
 /// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
 /// assert!(p.parse("(notclosed").is_err());
 /// ```
-pub fn delimited<'a, I, E, O0, P0, O1, P1, O2, P2>(
+pub fn delimited<'a, I, O0, P0, O1, P1, O2, P2>(
 	left: P0,
 	content: P1,
 	right: P2,
-) -> impl Parser<'a, I, O1, E>
+) -> impl Parser<'a, I, O1>
 where
 	I: 'a + ?Sized,
-	P0: Parser<'a, I, O0, E>,
-	P1: Parser<'a, I, O1, E>,
-	P2: Parser<'a, I, O2, E>,
+	P0: Parser<'a, I, O0>,
+	P1: Parser<'a, I, O1>,
+	P2: Parser<'a, I, O2>,
 {
 	move |input: &'a I| {
 		let (_, rest) = left.parse(input)?;
@@ -120,14 +119,14 @@ where
 ///
 /// assert_eq!(vec!['a', 'b', 'c', 'd'], output);
 /// ```
-pub fn fold<'a, I, O, OX, E, P, F>(
+pub fn fold<'a, I, O, OX, P, F>(
 	parser: P,
 	acc: OX,
 	apply: F,
-) -> impl Parser<'a, I, OX, E>
+) -> impl Parser<'a, I, OX>
 where
 	I: 'a + ?Sized,
-	P: Parser<'a, I, O, E>,
+	P: Parser<'a, I, O>,
 	OX: Clone,
 	F: Fn(&mut OX, O),
 {

@@ -2,13 +2,13 @@ use crate::{PResult, Parser};
 
 macro_rules! impl_tuple {
 	($($type:ident $o:ident $index:tt),*) => {
-		impl <'a, I, E, $($type, $o,)*> Parser<'a, I, ($($o,)*), E> for ($($type,)*)
+		impl <'a, I, $($type, $o,)*> Parser<'a, I, ($($o,)*)> for ($($type,)*)
 		where
 			I: 'a + ?Sized,
-			$($type: Parser<'a, I, $o, E>,)*
+			$($type: Parser<'a, I, $o>,)*
 		{
 			fn parse(&self, input: &'a I)
-				-> PResult<'a, I, ($($o,)*), E> {
+				-> PResult<'a, I, ($($o,)*)> {
 
 				// This is an ugly, ugly hack.  The tuple
 				// expressions should evaluate their arguments
