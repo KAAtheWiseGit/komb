@@ -50,6 +50,12 @@ impl<'a> IntoIterator for &'a Error {
 	}
 }
 
+impl PartialEq for Error {
+	fn eq(&self, _: &Self) -> bool {
+		false
+	}
+}
+
 impl Error {
 	pub fn new<I>(collection: I) -> Error
 	where
