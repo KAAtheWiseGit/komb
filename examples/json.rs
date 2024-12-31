@@ -32,7 +32,7 @@ fn string<'a>() -> impl Parser<'a, str, String> {
 			)
 			.into()),
 		};
-		let num = u32::from_str_radix(s, 16).unwrap();
+		let num = u32::from_str_radix(s, 16)?;
 		Ok(char::from_u32(num).unwrap())
 	}));
 

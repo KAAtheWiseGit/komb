@@ -22,8 +22,6 @@ impl Display for Context {
 	}
 }
 
-impl Error for Context {}
-
 impl Context {
 	pub fn new<M>(offset: *const u8, length: usize, message: M) -> Context
 	where

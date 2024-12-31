@@ -18,6 +18,17 @@ pub struct Error {
 	stack: Vec<Context>,
 }
 
+impl<E> From<E> for Error
+where
+	E: core::error::Error + Send + Sync + 'static,
+{
+	fn from(value: E) -> Self {
+		Error {
+			stack: vec![Context::from_error(value)],
+		}
+	}
+}
+
 impl From<Context> for Error {
 	fn from(value: Context) -> Self {
 		Error { stack: vec![value] }
@@ -32,12 +43,6 @@ impl Display for Error {
 			f.write_str("\n")?;
 		}
 		Ok(())
-	}
-}
-
-impl core::error::Error for Error {
-	fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-		Some(self.source())
 	}
 }
 
