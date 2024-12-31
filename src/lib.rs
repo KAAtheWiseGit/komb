@@ -1,6 +1,7 @@
 // TODO: examples
 #![doc = include_str!("../README.md")]
-#![cfg_attr(not(test), no_std)]
+#![no_std]
+extern crate alloc;
 
 pub mod combinator;
 mod span;
