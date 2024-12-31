@@ -5,6 +5,13 @@ use core::fmt::{self, Display};
 
 use crate::Context;
 
+#[macro_export]
+macro_rules! bail {
+	($err:expr) => {
+		return Err(Context::from_error($err).into())
+	};
+}
+
 #[derive(Debug)]
 pub struct Error {
 	// INVARIANT: must have at least one element
