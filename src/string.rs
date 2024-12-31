@@ -4,7 +4,7 @@
 
 use thiserror::Error;
 
-use crate::{bail, combinator::choice, Context, Error, PResult, Parser};
+use crate::{combinator::choice, Context, Error, PResult, Parser};
 
 /// Kitchen-sink error.
 #[derive(Debug, Error)]
@@ -19,7 +19,7 @@ impl<'a> Parser<'a, str, &'a str> for &str {
 		} else if input.is_empty() {
 			Err(Error::end(input))
 		} else {
-			bail!(Unmatched())
+			Err(Unmatched().into())
 		}
 	}
 }
@@ -66,7 +66,7 @@ pub fn anycase<'a>(literal: &'static str) -> impl Parser<'a, str, &'a str> {
 			if lit_ch.to_ascii_lowercase()
 				!= input_ch.to_ascii_lowercase()
 			{
-				bail!(Unmatched());
+				return Err(Unmatched().into());
 			}
 		}
 	}
@@ -120,7 +120,7 @@ pub fn eof<'a>() -> impl Parser<'a, str, ()> {
 		if input.is_empty() {
 			Ok(((), input))
 		} else {
-			bail!(Unmatched());
+			Err(Unmatched().into())
 		}
 	}
 }
@@ -277,7 +277,7 @@ where
 				return if at_least_one {
 					Ok((&input[..i], &input[i..]))
 				} else {
-					bail!(Unmatched());
+					Err(Unmatched().into())
 				};
 			}
 			index = i + char.len_utf8();
@@ -287,7 +287,7 @@ where
 		if at_least_one {
 			Ok((&input[..index], &input[index..]))
 		} else {
-			bail!(Unmatched())
+			Err(Unmatched().into())
 		}
 	}
 }
@@ -377,13 +377,13 @@ where
 {
 	move |input: &'a str| {
 		let Some(ch) = input.chars().next() else {
-			bail!(Unmatched());
+			return Err(Unmatched().into());
 		};
 
 		if f(ch) {
 			Ok((ch, &input[ch.len_utf8()..]))
 		} else {
-			bail!(Unmatched())
+			Err(Unmatched().into())
 		}
 	}
 }
