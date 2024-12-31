@@ -97,6 +97,11 @@ where
 	/// pointers on implementing it.
 	fn parse(&self, input: &'a I) -> PResult<'a, I, O>;
 
+	/// Creates a copy of the parser.
+	fn clone(&self) -> impl Parser<'a, I, O> {
+		move |input: &'a I| self.parse(input)
+	}
+
 	/// Converts the output type using the `Into` trait.
 	fn coerce<OX>(self) -> impl Parser<'a, I, OX>
 	where
@@ -163,13 +168,23 @@ where
 		move |input: &'a I| self.parse(input).map_err(&f)
 	}
 
-	/// Attach context to the result if the parser fails.
+	/// Attach context to the error if the parser fails.
 	fn with_context<F>(self, f: F) -> impl Parser<'a, I, O>
 	where
 		Self: Sized,
 		F: Fn() -> Context,
 	{
 		self.map_err(move |e| e.with_context(&f))
+	}
+
+	/// Attach a message to the error if the parser fails.
+	fn with_message<F, S>(self, f: F) -> impl Parser<'a, I, O>
+	where
+		Self: Sized,
+		F: Fn() -> S,
+		S: AsRef<str>,
+	{
+		self.with_context(move || Context::from_message(f()))
 	}
 
 	/// Calls the `other` parser if this one fails and returns it's result
