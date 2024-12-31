@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 use komb::{
 	combinator::{choice, delimited, fold, optional},
-	string::{eof, none_of_char, one_of0, take, StringError},
-	PResult, Parser, Span,
+	string::{eof, none_of_char, one_of0, take},
+	Context, PResult, Parser,
 };
 
 #[derive(Debug, Clone)]
@@ -19,97 +19,51 @@ enum Value {
 	Object(HashMap<String, Value>),
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
-struct Error {
-	message: String,
-	location: Option<Span>,
+fn whitespace<'a>() -> impl Parser<'a, str, ()> {
+	one_of0(&[' ', '\n', '\r', '\t']).map_out(|_| ())
 }
 
-impl Error {
-	fn new<S: AsRef<str>>(msg: S) -> Error {
-		Error {
-			message: msg.as_ref().to_owned(),
-			location: None,
-		}
-	}
-
-	fn unreachable() -> Error {
-		Error::new("Unreachable")
-	}
-}
-
-impl From<StringError> for Error {
-	fn from(val: StringError) -> Error {
-		Error::new(val.to_string())
-	}
-}
-
-fn whitespace<'a>() -> impl Parser<'a, str, (), Error> {
-	one_of0(&[' ', '\n', '\r', '\t'])
-		.map_out(|_| ())
-		.map_err(|_| Error::unreachable())
-}
-
-fn string<'a>() -> impl Parser<'a, str, String, Error> {
-	let u_esc =
-		"\\u".map_err(|_| Error::unreachable())
-			.and_then(take(4).map(|v| {
-				let s = match v {
-					Ok(s) => s,
-					Err(_) => return Err(Error::new(
-						"Invalid character code",
-					)),
-				};
-				let num = u32::from_str_radix(s, 16).map_err(
-					|_| {
-						Error::new("Escape code is not a valid HEX number: {s}")
-					},
-				)?;
-				Ok(char::from_u32(num).unwrap())
-			}));
+fn string<'a>() -> impl Parser<'a, str, String> {
+	let u_esc = "\\u".and_then(take(4).map(|v| {
+		let s = match v {
+			Ok(s) => s,
+			Err(_) => return Err(Context::from_message(
+				"The Unicode escape must be 4 characters long",
+			)
+			.into()),
+		};
+		let num = u32::from_str_radix(s, 16).unwrap();
+		Ok(char::from_u32(num).unwrap())
+	}));
 
 	let p = fold(
 		choice((
-			"\\\"".map_out(|_| '\"')
-				.map_err(|_| Error::unreachable()),
-			"\\\\".map_out(|_| '\\')
-				.map_err(|_| Error::unreachable()),
-			"\\/".map_out(|_| '/')
-				.map_err(|_| Error::unreachable()),
-			"\\b".map_out(|_| '\x08')
-				.map_err(|_| Error::unreachable()),
-			"\\f".map_out(|_| '\x0C')
-				.map_err(|_| Error::unreachable()),
-			"\\n".map_out(|_| '\n')
-				.map_err(|_| Error::unreachable()),
-			"\\r".map_out(|_| '\r')
-				.map_err(|_| Error::unreachable()),
-			"\\t".map_out(|_| '\t')
-				.map_err(|_| Error::unreachable()),
+			"\\\"".map_out(|_| '\"'),
+			"\\\\".map_out(|_| '\\'),
+			"\\/".map_out(|_| '/'),
+			"\\b".map_out(|_| '\x08'),
+			"\\f".map_out(|_| '\x0C'),
+			"\\n".map_out(|_| '\n'),
+			"\\r".map_out(|_| '\r'),
+			"\\t".map_out(|_| '\t'),
 			u_esc,
-			none_of_char(&['\\', '"'])
-				.map_err(|_| Error::unreachable()),
+			none_of_char(&['\\', '"']),
 		)),
 		String::new(),
 		|acc, ch| acc.push(ch),
 	);
 
-	delimited(
-		'"'.map_err(|_| Error::unreachable()),
-		p,
-		'"'.map_err(|_| Error::unreachable()),
-	)
-	.coerce()
+	delimited('"', p, '"').coerce()
 }
 
-fn object<'a>() -> impl Parser<'a, str, HashMap<String, Value>, Error> {
-	let comma = optional(',').map_err(|_| Error::unreachable());
+fn object<'a>() -> impl Parser<'a, str, HashMap<String, Value>> {
+	let comma = optional(',');
 
 	let pair = (
 		whitespace(),
 		string(),
 		whitespace(),
-		':'.coerce::<char, Error>(),
+		':',
 		value,
 		comma,
 		whitespace(),
@@ -120,28 +74,20 @@ fn object<'a>() -> impl Parser<'a, str, HashMap<String, Value>, Error> {
 		acc.insert(k, v);
 	});
 
-	delimited(
-		'{'.coerce::<char, Error>().before(whitespace()),
-		folded,
-		'}'.coerce::<char, Error>(),
-	)
+	delimited('{'.before(whitespace()), folded, '}')
 }
 
-fn array<'a>() -> impl Parser<'a, str, Vec<Value>, Error> {
-	let comma = optional(',').map_err(|_| Error::unreachable());
+fn array<'a>() -> impl Parser<'a, str, Vec<Value>> {
+	let comma = optional(',');
 
 	let folded = fold(value.before(comma), Vec::new(), |acc, value| {
 		acc.push(value)
 	});
 
-	delimited(
-		'['.coerce::<char, Error>(),
-		folded,
-		']'.coerce::<char, Error>(),
-	)
+	delimited('[', folded, ']')
 }
 
-fn value(input: &str) -> PResult<str, Value, Error> {
+fn value(input: &str) -> PResult<str, Value> {
 	delimited(
 		whitespace(),
 		choice((
@@ -154,13 +100,11 @@ fn value(input: &str) -> PResult<str, Value, Error> {
 		)),
 		whitespace(),
 	)
-	.map_err(|_| Error::new("Failed to match a JSON value"))
 	.parse(input)
 }
 
-fn parser(input: &str) -> PResult<str, Value, Error> {
-	value.before(eof().map_err(|_| Error::new("Trailing characters")))
-		.parse(input)
+fn parser(input: &str) -> PResult<str, Value> {
+	value.before(eof()).parse(input)
 }
 
 fn main() {
