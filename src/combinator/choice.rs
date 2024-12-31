@@ -80,11 +80,7 @@ mod test {
 		let result = parser.parse("bc");
 		assert_eq!(Ok(('b', "c")), result);
 
-		let parser = choice((
-			'a',
-			'b',
-			'c',
-		));
+		let parser = choice(('a', 'b', 'c'));
 		let result = parser.parse("cx");
 		assert_eq!(Ok(('c', "x")), result);
 	}
