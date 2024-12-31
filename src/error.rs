@@ -53,6 +53,15 @@ impl Error {
 		}
 	}
 
+	pub fn end<S>(input: S) -> Error
+	where
+		S: AsRef<[u8]>,
+	{
+		Context::from_message("Reached the end of input")
+			.with_span(input)
+			.into()
+	}
+
 	pub fn with_context<F>(mut self, f: F) -> Error
 	where
 		F: FnOnce() -> Context,
