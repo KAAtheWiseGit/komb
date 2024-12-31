@@ -115,6 +115,38 @@ where
 		}
 	}
 
+	/// Transform the output or return an error.
+	///
+	/// Provides an ergonomic way to make fallible transforms on output
+	/// without having to juggle the input.  The function `f` is passed
+	/// `Ok(output)` if the parser succeeded or `Err(error)` if it failed.
+	/// If the output gets transformed into another `Ok` output, `rest`
+	/// isn't changed.  If an error is transformed into `Ok`, `rest` equals
+	/// the original `input`.
+	fn map<OX, EX, F>(self, f: F) -> impl Parser<'a, I, OX, EX>
+	where
+		Self: Sized,
+		F: Fn(Result<O, E>) -> Result<OX, EX>,
+	{
+		move |input: &'a I| {
+			let (res, rest) = match self.parse(input) {
+				Ok((out, rest)) => {
+					let res = Ok(out);
+					(f(res), rest)
+				}
+				Err(err) => {
+					let res = Err(err);
+					(f(res), input)
+				}
+			};
+
+			match res {
+				Ok(out) => Ok((out, rest)),
+				Err(err) => Err(err),
+			}
+		}
+	}
+
 	/// Applies a transformation to the output or does nothing if the parser
 	/// returns an error.
 	fn map_out<OX, F>(self, f: F) -> impl Parser<'a, I, OX, E>
