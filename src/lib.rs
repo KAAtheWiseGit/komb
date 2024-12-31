@@ -163,6 +163,15 @@ where
 		move |input: &'a I| self.parse(input).map_err(&f)
 	}
 
+	/// Attach context to the result if the parser fails.
+	fn with_context<F>(self, f: F) -> impl Parser<'a, I, O>
+	where
+		Self: Sized,
+		F: Fn() -> Context,
+	{
+		self.map_err(move |e| e.with_context(&f))
+	}
+
 	/// Calls the `other` parser if this one fails and returns it's result
 	/// instead.
 	fn or<Q>(self, other: Q) -> impl Parser<'a, I, O>
