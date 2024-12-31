@@ -1,11 +1,6 @@
 use crate::{PResult, Parser};
 
-pub trait Choice<'a, I, O>
-where
-	I: 'a + ?Sized,
-{
-	fn choice(&self, input: &'a I) -> PResult<'a, I, O>;
-}
+pub struct Choice<P>(P);
 
 /// Picks the first succeeding parser and returns it's output.  If all parsers
 /// fail, the error from the last one is returned.
@@ -20,35 +15,34 @@ where
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
 /// assert!(p.parse("d").is_err());
 /// ```
-pub fn choice<'a, I, O, P>(parsers: P) -> impl Parser<'a, I, O>
-where
-	I: 'a + ?Sized,
-	P: Choice<'a, I, O>,
-{
-	move |input: &'a I| parsers.choice(input)
+pub fn choice<P>(parsers: P) -> Choice<P> {
+	Choice(parsers)
 }
 
 macro_rules! impl_choice {
 	($($type:ident: $index:tt),*; $lastp:ident: $lasti:tt) => {
-		impl<'a, I, O, $($type,)* $lastp> Choice<'a, I, O> for ($($type,)*$lastp)
-		where
-			I: 'a + ?Sized,
-			$($type: Parser<'a, I, O>,)*
-			$lastp: Parser<'a, I, O>,
-		{
-			fn choice(&self, input: &'a I) -> PResult<'a, I, O> {
-				$(
-				if let Ok((out, rest)) = self.$index.parse(input) {
-					return Ok((out, rest));
-				};
-				)*
 
-				match self.$lasti.parse(input) {
-					Ok((out, rest)) => Ok((out, rest)),
-					Err(err) => Err(err),
-				}
+	impl<'a, I, O, $($type,)* $lastp> Parser<'a, I, O>
+		for Choice<($($type,)*$lastp)>
+	where
+		I: 'a + ?Sized,
+		$($type: Parser<'a, I, O>,)*
+		$lastp: Parser<'a, I, O>,
+	{
+		fn parse(&self, input: &'a I) -> PResult<'a, I, O> {
+			$(
+			if let Ok((out, rest)) = self.0.$index.parse(input) {
+				return Ok((out, rest));
+			};
+			)*
+
+			match self.0.$lasti.parse(input) {
+				Ok((out, rest)) => Ok((out, rest)),
+				Err(err) => Err(err),
 			}
 		}
+	}
+
 	};
 }
 

@@ -2,30 +2,30 @@ use crate::{PResult, Parser};
 
 macro_rules! impl_tuple {
 	($($type:ident $o:ident $index:tt),*) => {
-		impl <'a, I, $($type, $o,)*> Parser<'a, I, ($($o,)*)> for ($($type,)*)
-		where
-			I: 'a + ?Sized,
-			$($type: Parser<'a, I, $o>,)*
-		{
-			fn parse(&self, input: &'a I)
-				-> PResult<'a, I, ($($o,)*)> {
 
-				// This is an ugly, ugly hack.  The tuple
-				// expressions should evaluate their arguments
-				// left to right, which allows us to modify
-				// `rest` on the fly.
-				let mut rest = input;
-				Ok((
-				($({
-					let (o, r) = self.$index.parse(rest)?;
-					rest = r;
-					o
+	impl <'a, I, $($type, $o,)*> Parser<'a, I, ($($o,)*)> for ($($type,)*)
+	where
+		I: 'a + ?Sized,
+		$($type: Parser<'a, I, $o>,)*
+	{
+		fn parse(&self, input: &'a I) -> PResult<'a, I, ($($o,)*)> {
+			// This is an ugly, ugly hack.  The tuple
+			// expressions should evaluate their arguments
+			// left to right, which allows us to modify
+			// `rest` on the fly.
+			let mut rest = input;
+			Ok((
+			($({
+				let (o, r) = self.$index.parse(rest)?;
+				rest = r;
+				o
 
-				},)*),
-				rest,
-				))
-			}
+			},)*),
+			rest,
+			))
 		}
+	}
+
 	}
 }
 
