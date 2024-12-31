@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use komb::{
 	combinator::{choice, delimited, fold, optional},
-	string::{eof, none_of_char, one_of0, StringError},
+	string::{eof, none_of_char, one_of0, take, StringError},
 	PResult, Parser, Span,
 };
 
@@ -51,23 +51,55 @@ fn whitespace<'a>() -> impl Parser<'a, str, (), Error> {
 }
 
 fn string<'a>() -> impl Parser<'a, str, String, Error> {
+	let u_esc =
+		"\\u".map_err(|_| Error::unreachable())
+			.and_then(take(4).map(|v| {
+				let s = match v {
+					Ok(s) => s,
+					Err(_) => return Err(Error::new(
+						"Invalid character code",
+					)),
+				};
+				let num = u32::from_str_radix(s, 16).map_err(
+					|_| {
+						Error::new("Escape code is not a valid HEX number: {s}")
+					},
+				)?;
+				Ok(char::from_u32(num).unwrap())
+			}));
+
 	let p = fold(
 		choice((
-			"\\\"".map_out(|_| '\"'),
-			"\\\\".map_out(|_| '\\'),
-			"\\/".map_out(|_| '/'),
-			"\\b".map_out(|_| '\x08'),
-			"\\f".map_out(|_| '\x0C'),
-			"\\n".map_out(|_| '\n'),
-			"\\r".map_out(|_| '\r'),
-			"\\t".map_out(|_| '\t'),
-			none_of_char(&['\\', '"']),
+			"\\\"".map_out(|_| '\"')
+				.map_err(|_| Error::unreachable()),
+			"\\\\".map_out(|_| '\\')
+				.map_err(|_| Error::unreachable()),
+			"\\/".map_out(|_| '/')
+				.map_err(|_| Error::unreachable()),
+			"\\b".map_out(|_| '\x08')
+				.map_err(|_| Error::unreachable()),
+			"\\f".map_out(|_| '\x0C')
+				.map_err(|_| Error::unreachable()),
+			"\\n".map_out(|_| '\n')
+				.map_err(|_| Error::unreachable()),
+			"\\r".map_out(|_| '\r')
+				.map_err(|_| Error::unreachable()),
+			"\\t".map_out(|_| '\t')
+				.map_err(|_| Error::unreachable()),
+			u_esc,
+			none_of_char(&['\\', '"'])
+				.map_err(|_| Error::unreachable()),
 		)),
 		String::new(),
 		|acc, ch| acc.push(ch),
 	);
 
-	delimited('"', p, '"').coerce()
+	delimited(
+		'"'.map_err(|_| Error::unreachable()),
+		p,
+		'"'.map_err(|_| Error::unreachable()),
+	)
+	.coerce()
 }
 
 fn object<'a>() -> impl Parser<'a, str, HashMap<String, Value>, Error> {
