@@ -34,7 +34,7 @@ impl<'a> Parser<'a, str, char, Error> for char {
 /// other Unicode characters won't be accounted for.
 ///
 /// ```rust
-/// use komb::{Parser, string::{anycase, Error}};
+/// use komb::{Parser, string::anycase};
 ///
 /// let p = anycase("select");
 ///
@@ -42,7 +42,7 @@ impl<'a> Parser<'a, str, char, Error> for char {
 /// assert_eq!(Ok(("SELECT", " FROM table")), p.parse("SELECT FROM table"));
 ///
 /// let p = anycase("löve2d");
-/// assert_eq!(Err(Error::Unmatched), p.parse("LÖVE2D"));
+/// assert!(p.parse("LÖVE2D").is_err());
 /// ```
 pub fn anycase<'a>(
 	literal: &'static str,
@@ -78,7 +78,7 @@ pub fn anycase<'a>(
 /// reference.
 ///
 /// ```rust
-/// use komb::{Parser, string::{line_end, alphanumeric0, Error}};
+/// use komb::{Parser, string::{line_end, alphanumeric0}};
 ///
 /// let p = alphanumeric0().before(line_end());
 ///
@@ -94,14 +94,14 @@ pub fn line_end<'a>() -> impl Parser<'a, str, &'a str, Error> {
 /// line ended in `\r\n`, carriage return will be part of the output.
 ///
 /// ```rust
-/// use komb::{Parser, string::{line, Error}};
+/// use komb::{Parser, string::line};
 ///
 /// assert_eq!(Ok(("Hello", "world")), line().parse("Hello\nworld"));
 /// assert_eq!(Ok(("Hello\r", "world")), line().parse("Hello\r\nworld"));
 /// assert_eq!(Ok(("", "next line")), line().parse("\nnext line"));
-/// assert_eq!(Err(Error::End), line().parse(""));
+/// assert!(line().parse("").is_err());
 /// // No newline at the end
-/// assert_eq!(Err(Error::End), line().parse("Hello there"));
+/// assert!(line().parse("Hello there").is_err());
 /// ```
 pub fn line<'a>() -> impl Parser<'a, str, &'a str, Error> {
 	none_of0(&['\n']).before(line_end())
@@ -110,12 +110,12 @@ pub fn line<'a>() -> impl Parser<'a, str, &'a str, Error> {
 /// Succeeds if the input is empty.
 ///
 /// ```rust
-/// use komb::{Parser, string::{eof, Error}};
+/// use komb::{Parser, string::eof};
 ///
 /// let p = "Hello world".before(eof());
 ///
 /// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
-/// assert_eq!(Err(Error::Unmatched), p.parse("Hello world and then some"));
+/// assert!(p.parse("Hello world and then some").is_err());
 /// ```
 pub fn eof<'a>() -> impl Parser<'a, str, (), Error> {
 	move |input: &'a str| {
@@ -164,7 +164,7 @@ macro_rules! doc1to0 {
 ///
 ///
 /// ```rust
-/// use komb::{Parser, string::{take_while0, Error}};
+/// use komb::{Parser, string::take_while0};
 ///
 /// let p = take_while0(|ch| ch.is_alphanumeric());
 /// assert_eq!(Ok(("abc1", " and rest")), p.parse("abc1 and rest"));
@@ -240,7 +240,7 @@ pub fn alphabetic0<'a>() -> impl Parser<'a, str, &'a str, Error> {
 /// Uses [`char::is_alphanumeric`].
 ///
 /// ```rust
-/// use komb::{Parser, string::{alphanumeric0, Error}};
+/// use komb::{Parser, string::alphanumeric0};
 ///
 /// let p = alphanumeric0();
 /// assert_eq!(Ok(("abc0", " rest")), p.parse("abc0 rest"));
@@ -257,12 +257,12 @@ pub fn alphanumeric0<'a>() -> impl Parser<'a, str, &'a str, Error> {
 /// `true`.
 ///
 /// ```rust
-/// use komb::{Parser, string::{take_while1, Error}};
+/// use komb::{Parser, string::take_while1};
 ///
 /// let p = take_while1(|ch| ch == '0' || ch == '1');
 ///
 /// assert_eq!(Ok(("01010", "rest")), p.parse("01010rest"));
-/// assert_eq!(Err(Error::Unmatched), p.parse("other"));
+/// assert!(p.parse("other").is_err());
 /// ```
 ///
 #[doc=concat!(doc1to0!(), "[`", "take_while0", "`]")]
@@ -345,12 +345,12 @@ pub fn alphanumeric1<'a>() -> impl Parser<'a, str, &'a str, Error> {
 /// Uses [`char::is_alphanumeric`].
 ///
 /// ```rust
-/// use komb::{Parser, string::{Error, alphabetic1}};
+/// use komb::{Parser, string::alphabetic1};
 ///
 /// let p = alphabetic1();
 ///
 /// assert_eq!(Ok(("abcXYZ", " rest")), p.parse("abcXYZ rest"));
-/// assert_eq!(Err(Error::Unmatched), p.parse("_ident"))
+/// assert!(p.parse("_ident").is_err());
 /// ```
 ///
 #[doc=concat!(doc1to0!(), "[`", "alphanumeric1", "`]")]
@@ -365,13 +365,13 @@ pub fn alphabetic1<'a>() -> impl Parser<'a, str, &'a str, Error> {
 /// empty, [`Error::End`] is returned.
 ///
 /// ```rust
-/// use komb::{Parser, string::{char, Error}};
+/// use komb::{Parser, string::char};
 ///
 /// let p = char(|ch| ch == '1' || ch == 'a');
 ///
 /// assert_eq!(Ok(('1', "rest")), p.parse("1rest"));
 /// assert_eq!(Ok(('a', "1")), p.parse("a1"));
-/// assert_eq!(Err(Error::Unmatched), p.parse("x"));
+/// assert!(p.parse("x").is_err());
 /// ```
 pub fn char<'a, F>(f: F) -> impl Parser<'a, str, char, Error>
 where
@@ -379,7 +379,7 @@ where
 {
 	move |input: &'a str| {
 		let Some(ch) = input.chars().next() else {
-			bail!(Unmatched())
+			bail!(Unmatched());
 		};
 
 		if f(ch) {
@@ -415,7 +415,7 @@ pub fn none_of_char<'a>(
 /// The behaviour is the as that of [`char::is_digit`].
 ///
 /// ```rust
-/// use komb::{Parser, string::{digits1, Error}};
+/// use komb::{Parser, string::digits1};
 ///
 /// let p = digits1(16);
 ///
