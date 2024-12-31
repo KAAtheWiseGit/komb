@@ -155,10 +155,11 @@ pub fn eof<'a>() -> impl Parser<'a, str, (), StringError> {
 pub fn take<'a>(length: usize) -> impl Parser<'a, str, &'a str, StringError> {
 	move |input: &'a str| {
 		let mut current_length = 0;
-		for (i, _) in input.char_indices() {
+		for (i, ch) in input.char_indices() {
 			current_length += 1;
 			if current_length == length {
-				return Ok((&input[..i], &input[i..]));
+				let split = i + ch.len_utf8();
+				return Ok((&input[..split], &input[split..]));
 			}
 		}
 
