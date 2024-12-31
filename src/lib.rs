@@ -105,7 +105,7 @@ where
 	{
 		move |input: &'a I| match self.parse(input) {
 			Ok((out, rest)) => Ok((out.into(), rest)),
-			Err(err) => Err(err.into()),
+			Err(err) => Err(err),
 		}
 	}
 
