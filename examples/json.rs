@@ -20,7 +20,7 @@ enum Value {
 }
 
 fn whitespace<'a>() -> impl Parser<'a, str, ()> {
-	one_of0(&[' ', '\n', '\r', '\t']).map_out(|_| ())
+	one_of0(&[' ', '\n', '\r', '\t']).value(())
 }
 
 fn string<'a>() -> impl Parser<'a, str, String> {
@@ -38,14 +38,14 @@ fn string<'a>() -> impl Parser<'a, str, String> {
 
 	let p = fold(
 		choice((
-			"\\\"".map_out(|_| '\"'),
-			"\\\\".map_out(|_| '\\'),
-			"\\/".map_out(|_| '/'),
-			"\\b".map_out(|_| '\x08'),
-			"\\f".map_out(|_| '\x0C'),
-			"\\n".map_out(|_| '\n'),
-			"\\r".map_out(|_| '\r'),
-			"\\t".map_out(|_| '\t'),
+			"\\\"".value('\"'),
+			"\\\\".value('\\'),
+			"\\/".value('/'),
+			"\\b".value('\x08'),
+			"\\f".value('\x0C'),
+			"\\n".value('\n'),
+			"\\r".value('\r'),
+			"\\t".value('\t'),
 			u_esc,
 			none_of_char(&['\\', '"']),
 		)),
@@ -94,9 +94,9 @@ fn value(input: &str) -> PResult<str, Value> {
 			string().map_out(Value::String),
 			object().map_out(Value::Object),
 			array().map_out(Value::Array),
-			"true".map_out(|_| Value::Bool(true)).coerce(),
-			"false".map_out(|_| Value::Bool(false)).coerce(),
-			"null".map_out(|_| Value::Null).coerce(),
+			"true".value(Value::Bool(true)).coerce(),
+			"false".value(Value::Bool(false)).coerce(),
+			"null".value(Value::Null).coerce(),
 		)),
 		whitespace(),
 	)

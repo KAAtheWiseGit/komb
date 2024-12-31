@@ -168,6 +168,17 @@ where
 		move |input: &'a I| self.parse(input).map_err(&f)
 	}
 
+	/// Replace the output of a parser with `value`.
+	///
+	/// If the parser fails, the error remains unchanged.
+	fn value<OX>(self, value: OX) -> impl Parser<'a, I, OX>
+	where
+		Self: Sized,
+		OX: Clone,
+	{
+		self.map_out(move |_| value.clone())
+	}
+
 	/// Attach context to the error if the parser fails.
 	fn with_context<F>(self, f: F) -> impl Parser<'a, I, O>
 	where
