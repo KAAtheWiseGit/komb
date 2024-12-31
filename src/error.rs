@@ -17,7 +17,7 @@ where
 {
 	fn from(value: E) -> Self {
 		Error {
-			stack: vec![Context::from_error(value)],
+			stack: vec![value.into()],
 		}
 	}
 }

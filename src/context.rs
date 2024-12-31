@@ -22,6 +22,20 @@ impl Display for Context {
 	}
 }
 
+impl<E> From<E> for Context
+where
+	E: Error + Send + Sync + 'static,
+{
+	fn from(value: E) -> Self {
+		Context {
+			offset: ptr::null(),
+			length: 0,
+
+			message: value.into(),
+		}
+	}
+}
+
 impl Context {
 	pub fn new<M>(offset: *const u8, length: usize, message: M) -> Context
 	where
@@ -41,18 +55,6 @@ impl Context {
 			offset: ptr::null(),
 			length: 0,
 			message: s.into(),
-		}
-	}
-
-	pub fn from_error<E>(error: E) -> Context
-	where
-		E: Error + Send + Sync + 'static,
-	{
-		Context {
-			offset: ptr::null(),
-			length: 0,
-
-			message: error.into(),
 		}
 	}
 

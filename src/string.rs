@@ -439,12 +439,10 @@ macro_rules! impl_parse_uint {
 						{
 							Error::end(input)
 						} else {
-							Error::from(Context::from_error(Unmatched()))
+							Unmatched().into()
 						}
 					})?;
-				let out = s
-					.parse()
-					.map_err(Context::from_error)?;
+				let out = s.parse().map_err(Context::from)?;
 
 				Ok(((out, s), rest))
 			}
