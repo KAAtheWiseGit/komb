@@ -91,23 +91,7 @@ where
 	O: 'a,
 	OR: 'a,
 {
-	let f = move |input| {
-		let (_, rest) = left
-			.clone()
-			.with_message(|| "delimited: left parser failed")
-			.parse(input)?;
-		let (output, rest) = content
-			.clone()
-			.with_message(|| "delimited: content parser failed")
-			.parse(rest)?;
-		let (_, rest) = right
-			.clone()
-			.with_message(|| "delimited: right parser failed")
-			.parse(rest)?;
-
-		Ok((output, rest))
-	};
-	Parser::from(f)
+	tuple((left, content, right)).map_out(|tuple| tuple.1)
 }
 
 /// Applies `parser` and passes its output to the `apply`, which can modify the
