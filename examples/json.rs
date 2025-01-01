@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use komb::{
 	combinator::{choice, delimited, fold, optional, tuple},
 	string::{eof, literal, none_of_char, one_of0, take},
-	Context, Parser,
+	Context, PResult, Parser,
 };
 
 #[derive(Debug, Clone)]
@@ -36,22 +36,20 @@ fn string<'a>() -> Parser<'a, &'a str, String> {
 		Ok(char::from_u32(num).unwrap())
 	}));
 
-	let p = fold(
-		choice((
-			literal("\\").value('\"'),
-			literal("\\\\").value('\\'),
-			literal("\\/").value('/'),
-			literal("\\b").value('\x08'),
-			literal("\\f").value('\x0C'),
-			literal("\\n").value('\n'),
-			literal("\\r").value('\r'),
-			literal("\\t").value('\t'),
-			u_esc,
-			none_of_char(&['\\', '"']),
-		)),
-		String::new(),
-		|acc, ch| acc.push(ch),
-	);
+	let character = choice((
+		literal("\\").value('\"'),
+		literal("\\\\").value('\\'),
+		literal("\\/").value('/'),
+		literal("\\b").value('\x08'),
+		literal("\\f").value('\x0C'),
+		literal("\\n").value('\n'),
+		literal("\\r").value('\r'),
+		literal("\\t").value('\t'),
+		u_esc,
+		none_of_char(&['\\', '"']),
+	));
+
+	let p = fold(character, String::new(), |acc, ch| acc.push(ch));
 
 	delimited(literal("\""), p, literal("\"")).coerce()
 }
@@ -62,7 +60,7 @@ fn object<'a>() -> Parser<'a, &'a str, HashMap<String, Value>> {
 		string(),
 		whitespace(),
 		literal(":"),
-		value(),
+		Parser::from(value),
 		optional(literal(",")),
 		whitespace(),
 	))
@@ -78,30 +76,33 @@ fn object<'a>() -> Parser<'a, &'a str, HashMap<String, Value>> {
 fn array<'a>() -> Parser<'a, &'a str, Vec<Value>> {
 	let comma = optional(literal(","));
 
-	let folded = fold(value().before(comma), Vec::new(), |acc, value| {
-		acc.push(value)
-	});
+	let folded = fold(
+		Parser::from(value).before(comma),
+		Vec::new(),
+		|acc, value| acc.push(value),
+	);
 
 	delimited(literal("["), folded, literal("]"))
 }
 
-fn value<'a>() -> Parser<'a, &'a str, Value> {
+fn value(input: &str) -> PResult<&str, Value> {
 	delimited(
 		whitespace(),
 		choice((
 			string().map_out(Value::String),
 			object().map_out(Value::Object),
 			array().map_out(Value::Array),
-			literal("true").value(Value::Bool(true)).coerce(),
-			literal("false").value(Value::Bool(false)).coerce(),
-			literal("null").value(Value::Null).coerce(),
+			literal("true").value(Value::Bool(true)),
+			literal("false").value(Value::Bool(false)),
+			literal("null").value(Value::Null),
 		)),
 		whitespace(),
 	)
+	.parse(input)
 }
 
 fn parser<'a>() -> Parser<'a, &'a str, Value> {
-	value().before(eof())
+	Parser::from(value).before(eof())
 }
 
 fn main() {
