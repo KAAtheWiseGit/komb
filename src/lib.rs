@@ -6,8 +6,6 @@
 extern crate alloc;
 
 pub mod combinator;
-mod context;
-mod error;
 pub mod string;
 
 /// The result type returned by parsers.
