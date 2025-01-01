@@ -23,11 +23,14 @@ pub type PResult<I, O, E> = Result<(O, I), E>;
 /// function to be used directly:
 ///
 /// ```rust
-/// use komb::{Parse, PResult, Context};
+/// use komb::{Parser, PResult};
 ///
-/// fn binary_number(input: &str) -> PResult<&str, usize> {
+/// #[derive(Debug, PartialEq)]
+/// struct MyError {}
+///
+/// fn binary_number(input: &str) -> PResult<&str, usize, MyError> {
 ///     let Some(rest) = input.strip_prefix("0b") else {
-///         return Err(Context::from_message("TODO").into());
+///         return Err(MyError {});
 ///     };
 ///
 ///     // The end of digits in the number or the whole string, if it only
@@ -36,7 +39,7 @@ pub type PResult<I, O, E> = Result<(O, I), E>;
 ///
 ///     let (digits, rest) = (&rest[..end], &rest[end..]);
 ///     let Ok(out) = usize::from_str_radix(digits, 2) else {
-///         return Err(Context::from_message("TODO").into());
+///         return Err(MyError {});
 ///     };
 ///
 ///     Ok((out, rest))
@@ -53,9 +56,12 @@ pub type PResult<I, O, E> = Result<(O, I), E>;
 /// return type.
 ///
 /// ```rust
-/// use komb::{Context, Parse};
+/// use komb::Parser;
 ///
-/// fn number<'a>(radix: u32) -> impl Parse<'a, &'a str, usize> {
+/// #[derive(Debug, PartialEq)]
+/// struct MyError {}
+///
+/// fn number<'a>(radix: u32) -> impl Parser<'a, &'a str, usize, MyError> {
 ///     assert!(radix >= 2 && radix <= 36);
 ///
 ///     // `move` captures `radix` for each created parser
@@ -66,7 +72,7 @@ pub type PResult<I, O, E> = Result<(O, I), E>;
 ///
 ///         let (digits, rest) = (&input[..end], &input[end..]);
 ///         let Ok(out) = usize::from_str_radix(digits, radix) else {
-///             return Err(Context::from_message("TODO").into());
+///             return Err(MyError {});
 ///         };
 ///
 ///         Ok((out, rest))
