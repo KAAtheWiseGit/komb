@@ -4,9 +4,9 @@
 use std::collections::HashMap;
 
 use komb::{
-	combinator::{choice, delimited, fold, optional},
-	string::{eof, none_of_char, one_of0, take},
-	Context, PResult, Parse,
+	combinator::{choice, delimited, fold, optional, tuple},
+	string::{eof, literal, none_of_char, one_of0, take},
+	Context, Parser,
 };
 
 #[derive(Debug, Clone)]
@@ -19,12 +19,12 @@ enum Value {
 	Object(HashMap<String, Value>),
 }
 
-fn whitespace<'a>() -> impl Parse<'a, &'a str, ()> {
+fn whitespace<'a>() -> Parser<'a, &'a str, ()> {
 	one_of0(&[' ', '\n', '\r', '\t']).value(())
 }
 
-fn string<'a>() -> impl Parse<'a, &'a str, String> {
-	let u_esc = "\\u".and_then(take(4).map(|v| {
+fn string<'a>() -> Parser<'a, &'a str, String> {
+	let u_esc = literal("\\u").and_then(take(4).map(|v| {
 		let s = match v {
 			Ok(s) => s,
 			Err(_) => return Err(Context::from_message(
@@ -38,14 +38,14 @@ fn string<'a>() -> impl Parse<'a, &'a str, String> {
 
 	let p = fold(
 		choice((
-			"\\\"".value('\"'),
-			"\\\\".value('\\'),
-			"\\/".value('/'),
-			"\\b".value('\x08'),
-			"\\f".value('\x0C'),
-			"\\n".value('\n'),
-			"\\r".value('\r'),
-			"\\t".value('\t'),
+			literal("\\").value('\"'),
+			literal("\\\\").value('\\'),
+			literal("\\/").value('/'),
+			literal("\\b").value('\x08'),
+			literal("\\f").value('\x0C'),
+			literal("\\n").value('\n'),
+			literal("\\r").value('\r'),
+			literal("\\t").value('\t'),
 			u_esc,
 			none_of_char(&['\\', '"']),
 		)),
@@ -53,58 +53,55 @@ fn string<'a>() -> impl Parse<'a, &'a str, String> {
 		|acc, ch| acc.push(ch),
 	);
 
-	delimited('"', p, '"').coerce()
+	delimited(literal("\""), p, literal("\"")).coerce()
 }
 
-fn object<'a>() -> impl Parse<'a, &'a str, HashMap<String, Value>> {
-	let comma = optional(',');
-
-	let pair = (
+fn object<'a>() -> Parser<'a, &'a str, HashMap<String, Value>> {
+	let pair = tuple((
 		whitespace(),
 		string(),
 		whitespace(),
-		':',
-		value,
-		comma,
+		literal(":"),
+		value(),
+		optional(literal(",")),
 		whitespace(),
-	)
-		.map_out(|tuple| (tuple.1, tuple.4));
+	))
+	.map_out(|tuple| (tuple.1, tuple.4));
 
 	let folded = fold(pair, HashMap::new(), |acc, (k, v)| {
 		acc.insert(k, v);
 	});
 
-	delimited('{'.before(whitespace()), folded, '}')
+	delimited(literal("{").before(whitespace()), folded, literal("}"))
 }
 
-fn array<'a>() -> impl Parse<'a, &'a str, Vec<Value>> {
-	let comma = optional(',');
+fn array<'a>() -> Parser<'a, &'a str, Vec<Value>> {
+	let comma = optional(literal(","));
 
-	let folded = fold(value.before(comma), Vec::new(), |acc, value| {
+	let folded = fold(value().before(comma), Vec::new(), |acc, value| {
 		acc.push(value)
 	});
 
-	delimited('[', folded, ']')
+	delimited(literal("["), folded, literal("]"))
 }
 
-fn value(input: &str) -> PResult<&str, Value> {
+fn value<'a>() -> Parser<'a, &'a str, Value> {
 	delimited(
 		whitespace(),
 		choice((
 			string().map_out(Value::String),
 			object().map_out(Value::Object),
 			array().map_out(Value::Array),
-			"true".value(Value::Bool(true)).coerce(),
-			"false".value(Value::Bool(false)).coerce(),
-			"null".value(Value::Null).coerce(),
+			literal("true").value(Value::Bool(true)).coerce(),
+			literal("false").value(Value::Bool(false)).coerce(),
+			literal("null").value(Value::Null).coerce(),
 		)),
 		whitespace(),
 	)
-	.parse(input)
 }
 
-fn parser(input: &str) -> PResult<&str, Value> {
-	value.before(eof()).parse(input)
+fn parser<'a>() -> Parser<'a, &'a str, Value> {
+	value().before(eof())
 }
 
 fn main() {
@@ -132,12 +129,5 @@ fn main() {
     }
 }"#;
 
-	println!("{:#?}", parser.parse(s));
-}
-
-fn fail() {
-	let s = String::from("string");
-	let s: &str = &s;
-
-	println!("{:?}", (s, s).parse("string rest"));
+	println!("{:#?}", parser().parse(s));
 }
