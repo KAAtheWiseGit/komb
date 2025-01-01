@@ -3,7 +3,6 @@
 mod choice;
 mod tuple;
 pub use choice::choice;
-pub use tuple::tuple;
 
 use crate::Parser;
 
@@ -19,18 +18,17 @@ use crate::Parser;
 /// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
 /// ```
 pub fn optional<'a, I, O, E>(
-	parser: Parser<'a, I, O, E>,
-) -> Parser<'a, I, Option<O>, E>
+	parser: impl Parser<'a, I, O, E>,
+) -> impl Parser<'a, I, Option<O>, E>
 where
 	I: Copy + 'a,
 	O: 'a,
 	E: 'a,
 {
-	let f = move |input| match parser.parse(input) {
+	move |input| match parser.parse(input) {
 		Ok((out, rest)) => Ok((Some(out), rest)),
 		Err(_) => Ok((None, input)),
-	};
-	Parser::from(f)
+	}
 }
 
 /// Swaps the parser results: if the underlying parser succeeds, `not` will
@@ -47,17 +45,18 @@ where
 /// assert!(p.parse("other").is_ok());
 /// assert_eq!("other", p.parse("other").unwrap().1);
 /// ```
-pub fn not<'a, I, O, E>(parser: Parser<'a, I, O, E>) -> Parser<'a, I, E, O>
+pub fn not<'a, I, O, E>(
+	parser: impl Parser<'a, I, O, E>,
+) -> impl Parser<'a, I, E, O>
 where
 	I: Copy + 'a,
 	O: 'a,
 	E: 'a,
 {
-	let f = move |input| match parser.parse(input) {
+	move |input| match parser.parse(input) {
 		Ok((output, _)) => Err(output),
 		Err(err) => Ok((err, input)),
-	};
-	Parser::from(f)
+	}
 }
 
 // TODO: investigate discarding the delimiting parsers errors and returning a
@@ -82,10 +81,10 @@ where
 /// assert!(p.parse("(notclosed").is_err());
 /// ```
 pub fn delimited<'a, I, OL, O, OR, E>(
-	left: Parser<'a, I, OL, E>,
-	content: Parser<'a, I, O, E>,
-	right: Parser<'a, I, OR, E>,
-) -> Parser<'a, I, O, E>
+	left: impl Parser<'a, I, OL, E> + 'a,
+	content: impl Parser<'a, I, O, E> + 'a,
+	right: impl Parser<'a, I, OR, E> + 'a,
+) -> impl Parser<'a, I, O, E>
 where
 	I: Copy + 'a,
 	OL: 'a,
@@ -93,7 +92,7 @@ where
 	OR: 'a,
 	E: 'a,
 {
-	tuple((left, content, right)).map_out(|tuple| tuple.1)
+	(left, content, right).map_out(|tuple| tuple.1)
 }
 
 /// Applies `parser` and passes its output to the `apply`, which can modify the
@@ -119,10 +118,10 @@ where
 /// assert_eq!(vec!['a', 'b', 'c', 'd'], output);
 /// ```
 pub fn fold<'a, I, O, OX, E, F>(
-	parser: Parser<'a, I, O, E>,
+	parser: impl Parser<'a, I, O, E>,
 	acc: OX,
 	apply: F,
-) -> Parser<'a, I, OX, E>
+) -> impl Parser<'a, I, OX, E>
 where
 	I: Copy + 'a,
 	O: 'a,
@@ -130,7 +129,7 @@ where
 	E: 'a,
 	F: Fn(&mut OX, O) + 'a,
 {
-	let f = move |input| {
+	move |input| {
 		let mut acc = acc.clone();
 		let mut input = input;
 
@@ -143,6 +142,5 @@ where
 		}
 
 		Ok((acc, input))
-	};
-	Parser::from(f)
+	}
 }

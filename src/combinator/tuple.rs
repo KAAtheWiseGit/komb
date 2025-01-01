@@ -1,30 +1,13 @@
 use crate::{PResult, Parser};
 
-pub trait Tuple<I, O, E> {
-	fn parse(&self, input: I) -> PResult<I, O, E>;
-}
-
-pub fn tuple<'p, P, I, O, E>(parsers: P) -> Parser<'p, I, O, E>
-where
-	P: 'p + Tuple<I, O, E>,
-{
-	let f = move |input| parsers.parse(input);
-	Parser::from(f)
-}
-
-// TODO: deduplicate
-macro_rules! to_type {
-	($o:ident) => {
-		Parser<'_, I, $o, E>
-	}
-}
-
 macro_rules! impl_tuple {
-	($($o:ident $index:tt),*) => {
+	($($p:ident $o:ident $index:tt),*) => {
 
-	impl <'a, I, E, $($o,)*> Tuple<I, ($($o,)*), E> for ($(to_type!($o),)*)
+	impl <'a, I, E, $($p, $o,)*> Parser<'a, I, ($($o,)*), E>
+		for ($($p,)*)
 	where
 		I: Copy,
+		$($p: Parser<'a, I, $o, E>,)*
 	{
 		fn parse(&self, input: I) -> PResult<I, ($($o,)*), E> {
 			// This is an ugly, ugly hack.  The tuple
@@ -47,21 +30,21 @@ macro_rules! impl_tuple {
 	}
 }
 
-impl_tuple!(O0 0, O1 1);
-impl_tuple!(O0 0, O1 1, O2 2);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8, O9 9);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8, O9 9, O10 10);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8, O9 9, O10 10, O11 11);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8, O9 9, O10 10, O11 11, O12 12);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8, O9 9, O10 10, O11 11, O12 12, O13 13);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8, O9 9, O10 10, O11 11, O12 12, O13 13, O14 14);
-impl_tuple!(O0 0, O1 1, O2 2, O3 3, O4 4, O5 5, O6 6, O7 7, O8 8, O9 9, O10 10, O11 11, O12 12, O13 13, O14 14, O15 15);
+impl_tuple!(P0 O0 0, P1 O1 1);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8, P9 O9 9);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8, P9 O9 9, P10 O10 10);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8, P9 O9 9, P10 O10 10, P11 O11 11);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8, P9 O9 9, P10 O10 10, P11 O11 11, P12 O12 12);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8, P9 O9 9, P10 O10 10, P11 O11 11, P12 O12 12, P13 O13 13);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8, P9 O9 9, P10 O10 10, P11 O11 11, P12 O12 12, P13 O13 13, P14 O14 14);
+impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7 7, P8 O8 8, P9 O9 9, P10 O10 10, P11 O11 11, P12 O12 12, P13 O13 13, P14 O14 14, P15 O15 15);
 
 #[cfg(test)]
 mod test {

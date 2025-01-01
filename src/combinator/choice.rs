@@ -1,8 +1,6 @@
 use crate::{PResult, Parser};
 
-pub trait Choice<I, O, E> {
-	fn parse(&self, input: I) -> PResult<I, O, E>;
-}
+pub struct Choice<T>(T);
 
 /// Picks the first succeeding parser and returns it's output.  If all parsers
 /// fail, the error from the last one is returned.
@@ -18,35 +16,31 @@ pub trait Choice<I, O, E> {
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
 /// assert!(p.parse("d").is_err());
 /// ```
-pub fn choice<'p, P, I, O, E>(parsers: P) -> Parser<'p, I, O, E>
+pub fn choice<'p, P: 'p, I, O, E>(parsers: P) -> impl Parser<'p, I, O, E>
 where
-	P: 'p + Choice<I, O, E>,
+	Choice<P>: Parser<'p, I, O, E>,
 {
-	let f = move |input| parsers.parse(input);
-	Parser::from(f)
-}
-
-macro_rules! to_type {
-	($t:tt) => {
-		Parser<'_, I, O, E>
-	}
+	Choice(parsers)
 }
 
 macro_rules! impl_choice {
-	($($index:tt),*; $lasti:tt) => {
+	($($p:ident $index:tt),*; $lastp:ident $lasti:tt) => {
 
-	impl<I, O, E> Choice<I, O, E> for ($(to_type!($index),)* Parser<'_, I, O, E>)
+	impl<'a, I, O, $($p,)* $lastp, E> Parser<'a, I, O, E>
+		for Choice<($($p,)* $lastp)>
 	where
 		I: Copy,
+		$($p: Parser<'a, I, O, E>,)*
+		$lastp: Parser<'a, I, O, E>,
 	{
 		fn parse(&self, input: I) -> PResult<I, O, E> {
 			$(
-			if let Ok((out, rest)) = self.$index.parse(input) {
+			if let Ok((out, rest)) = self.0.$index.parse(input) {
 				return Ok((out, rest));
 			};
 			)*
 
-			match self.$lasti.parse(input) {
+			match self.0.$lasti.parse(input) {
 				Ok((out, rest)) => Ok((out, rest)),
 				Err(err) => Err(err),
 			}
@@ -56,21 +50,21 @@ macro_rules! impl_choice {
 	};
 }
 
-impl_choice!(0; 1);
-impl_choice!(0, 1; 2);
-impl_choice!(0, 1, 2; 3);
-impl_choice!(0, 1, 2, 3; 4);
-impl_choice!(0, 1, 2, 3, 4; 5);
-impl_choice!(0, 1, 2, 3, 4, 5; 6);
-impl_choice!(0, 1, 2, 3, 4, 5, 6; 7);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7; 8);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7, 8; 9);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9; 10);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10; 11);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11; 12);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12; 13);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13; 14);
-impl_choice!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14; 15);
+impl_choice!(P0 0; P1 1);
+impl_choice!(P0 0, P1 1; P2 2);
+impl_choice!(P0 0, P1 1, P2 2; P3 3);
+impl_choice!(P0 0, P1 1, P2 2, P3 3; P4 4);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4; P5 5);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5; P6 6);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6; P7 7);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7; P8 8);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7, P8 8; P9 9);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7, P8 8, P9 9; P10 10);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7, P8 8, P9 9, P10 10; P11 11);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7, P8 8, P9 9, P10 10, P11 11; P12 12);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7, P8 8, P9 9, P10 10, P11 11, P12 12; P13 13);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7, P8 8, P9 9, P10 10, P11 11, P12 12, P13 13; P14 14);
+impl_choice!(P0 0, P1 1, P2 2, P3 3, P4 4, P5 5, P6 6, P7 7, P8 8, P9 9, P10 10, P11 11, P12 12, P13 13, P14 14; P15 15);
 
 #[cfg(test)]
 mod test {
