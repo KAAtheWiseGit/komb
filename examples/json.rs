@@ -19,11 +19,11 @@ enum Value {
 	Object(HashMap<String, Value>),
 }
 
-fn whitespace<'a>() -> impl Parser<'a, str, ()> {
+fn whitespace<'a>() -> impl Parser<'a, &'a str, ()> {
 	one_of0(&[' ', '\n', '\r', '\t']).value(())
 }
 
-fn string<'a>() -> impl Parser<'a, str, String> {
+fn string<'a>() -> impl Parser<'a, &'a str, String> {
 	let u_esc = "\\u".and_then(take(4).map(|v| {
 		let s = match v {
 			Ok(s) => s,
@@ -56,7 +56,7 @@ fn string<'a>() -> impl Parser<'a, str, String> {
 	delimited('"', p, '"').coerce()
 }
 
-fn object<'a>() -> impl Parser<'a, str, HashMap<String, Value>> {
+fn object<'a>() -> impl Parser<'a, &'a str, HashMap<String, Value>> {
 	let comma = optional(',');
 
 	let pair = (
@@ -77,7 +77,7 @@ fn object<'a>() -> impl Parser<'a, str, HashMap<String, Value>> {
 	delimited('{'.before(whitespace()), folded, '}')
 }
 
-fn array<'a>() -> impl Parser<'a, str, Vec<Value>> {
+fn array<'a>() -> impl Parser<'a, &'a str, Vec<Value>> {
 	let comma = optional(',');
 
 	let folded = fold(value.before(comma), Vec::new(), |acc, value| {
@@ -87,7 +87,7 @@ fn array<'a>() -> impl Parser<'a, str, Vec<Value>> {
 	delimited('[', folded, ']')
 }
 
-fn value(input: &str) -> PResult<str, Value> {
+fn value(input: &str) -> PResult<&str, Value> {
 	delimited(
 		whitespace(),
 		choice((
@@ -103,7 +103,7 @@ fn value(input: &str) -> PResult<str, Value> {
 	.parse(input)
 }
 
-fn parser(input: &str) -> PResult<str, Value> {
+fn parser(input: &str) -> PResult<&str, Value> {
 	value.before(eof()).parse(input)
 }
 
@@ -133,4 +133,11 @@ fn main() {
 }"#;
 
 	println!("{:#?}", parser.parse(s));
+}
+
+fn fail() {
+	let s = String::from("string");
+	let s: &str = &s;
+
+	println!("{:?}", (s, s).parse("string rest"));
 }

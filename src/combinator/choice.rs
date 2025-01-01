@@ -25,11 +25,11 @@ macro_rules! impl_choice {
 	impl<'a, I, O, $($type,)* $lastp> Parser<'a, I, O>
 		for Choice<($($type,)*$lastp)>
 	where
-		I: 'a + ?Sized,
+		I: Copy,
 		$($type: Parser<'a, I, O>,)*
 		$lastp: Parser<'a, I, O>,
 	{
-		fn parse(&self, input: &'a I) -> PResult<'a, I, O> {
+		fn parse(&self, input: I) -> PResult<I, O> {
 			$(
 			if let Ok((out, rest)) = self.0.$index.parse(input) {
 				return Ok((out, rest));

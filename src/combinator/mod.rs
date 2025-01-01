@@ -19,10 +19,10 @@ use crate::{Context, Error, Parser};
 /// ```
 pub fn optional<'a, I, O, P>(parser: P) -> impl Parser<'a, I, Option<O>>
 where
-	I: 'a + ?Sized,
+	I: Copy,
 	P: Parser<'a, I, O>,
 {
-	move |input: &'a I| match parser.parse(input) {
+	move |input| match parser.parse(input) {
 		Ok((out, rest)) => Ok((Some(out), rest)),
 		Err(_) => Ok((None, input)),
 	}
@@ -44,10 +44,10 @@ where
 /// ```
 pub fn not<'a, I, O, P>(parser: P) -> impl Parser<'a, I, Error>
 where
-	I: 'a + ?Sized,
+	I: Copy,
 	P: Parser<'a, I, O>,
 {
-	move |input: &'a I| match parser.parse(input) {
+	move |input| match parser.parse(input) {
 		Ok((_, _)) => Err(Context::from_message(
 			"Parser inside `not` succeeded",
 		)
@@ -83,12 +83,12 @@ pub fn delimited<'a, I, O0, P0, O1, P1, O2, P2>(
 	right: P2,
 ) -> impl Parser<'a, I, O1>
 where
-	I: 'a + ?Sized,
+	I: Copy,
 	P0: Parser<'a, I, O0>,
 	P1: Parser<'a, I, O1>,
 	P2: Parser<'a, I, O2>,
 {
-	move |input: &'a I| {
+	move |input| {
 		let (_, rest) = left
 			.clone()
 			.with_message(|| "delimited: left parser failed")
@@ -134,12 +134,12 @@ pub fn fold<'a, I, O, OX, P, F>(
 	apply: F,
 ) -> impl Parser<'a, I, OX>
 where
-	I: 'a + ?Sized,
+	I: Copy,
 	P: Parser<'a, I, O>,
 	OX: Clone,
 	F: Fn(&mut OX, O),
 {
-	move |input: &'a I| {
+	move |input| {
 		let mut acc = acc.clone();
 		let mut input = input;
 

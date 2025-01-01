@@ -1,6 +1,8 @@
 // TODO: examples
 #![doc = include_str!("../README.md")]
 #![no_std]
+#![allow(dead_code)]
+#![allow(missing_docs)]
 extern crate alloc;
 
 pub mod combinator;
@@ -17,7 +19,7 @@ pub use error::Error;
 /// unsized (usually `str` or `[u8]`).  If the parser succeeds, an `(output,
 /// rest)` tuple is returned, where `output` is the type created by the parser
 /// and `rest` is a sub-slice of input with the parsed part cut off.
-pub type PResult<'a, I, O> = Result<(O, &'a I), Error>;
+pub type PResult<I, O> = Result<(O, I), Error>;
 
 /// The core trait which defines parsers.
 ///
@@ -28,7 +30,7 @@ pub type PResult<'a, I, O> = Result<(O, &'a I), Error>;
 /// ```rust
 /// use komb::{Parser, PResult, Context};
 ///
-/// fn binary_number<'a>(input: &'a str) -> PResult<'a, str, usize> {
+/// fn binary_number(input: &str) -> PResult<&str, usize> {
 ///     let Some(rest) = input.strip_prefix("0b") else {
 ///         return Err(Context::from_message("TODO").into());
 ///     };
@@ -58,7 +60,7 @@ pub type PResult<'a, I, O> = Result<(O, &'a I), Error>;
 /// ```rust
 /// use komb::{Context, Parser};
 ///
-/// fn number<'a>(radix: u32) -> impl Parser<'a, str, usize> {
+/// fn number<'a>(radix: u32) -> impl Parser<'a, &'a str, usize> {
 ///     assert!(radix >= 2 && radix <= 36);
 ///
 ///     // `move` captures `radix` for each created parser
@@ -87,19 +89,16 @@ pub type PResult<'a, I, O> = Result<(O, &'a I), Error>;
 /// methods](#provided-methods).
 ///
 /// [impl]: #impl-Parser<'a,+I,+O,+E>-for-F
-pub trait Parser<'a, I, O>
-where
-	I: 'a + ?Sized,
-{
+pub trait Parser<'a, I, O> {
 	/// The core parsing method.
 	///
 	/// See the general [`Parser`] and [`PResult`] documentations for
 	/// pointers on implementing it.
-	fn parse(&self, input: &'a I) -> PResult<'a, I, O>;
+	fn parse(&self, input: I) -> PResult<I, O>;
 
 	/// Creates a copy of the parser.
 	fn clone(&self) -> impl Parser<'a, I, O> {
-		move |input: &'a I| self.parse(input)
+		move |input| self.parse(input)
 	}
 
 	/// Converts the output type using the `Into` trait.
@@ -108,7 +107,7 @@ where
 		Self: Sized,
 		O: Into<OX>,
 	{
-		move |input: &'a I| match self.parse(input) {
+		move |input| match self.parse(input) {
 			Ok((out, rest)) => Ok((out.into(), rest)),
 			Err(err) => Err(err),
 		}
@@ -125,9 +124,10 @@ where
 	fn map<OX, F>(self, f: F) -> impl Parser<'a, I, OX>
 	where
 		Self: Sized,
+		I: Copy,
 		F: Fn(Result<O, Error>) -> Result<OX, Error>,
 	{
-		move |input: &'a I| {
+		move |input| {
 			let (res, rest) = match self.parse(input) {
 				Ok((out, rest)) => {
 					let res = Ok(out);
@@ -153,9 +153,7 @@ where
 		Self: Sized,
 		F: Fn(O) -> OX,
 	{
-		move |input: &'a I| {
-			self.parse(input).map(|(out, rest)| (f(out), rest))
-		}
+		move |input| self.parse(input).map(|(out, rest)| (f(out), rest))
 	}
 
 	/// Applies a transformation to the error or does nothing if the parse
@@ -165,7 +163,7 @@ where
 		Self: Sized,
 		F: Fn(Error) -> Error,
 	{
-		move |input: &'a I| self.parse(input).map_err(&f)
+		move |input| self.parse(input).map_err(&f)
 	}
 
 	/// Replace the output of a parser with `value`.
@@ -203,11 +201,10 @@ where
 	fn or<Q>(self, other: Q) -> impl Parser<'a, I, O>
 	where
 		Self: Sized,
+		I: Copy,
 		Q: Parser<'a, I, O>,
 	{
-		move |input: &'a I| {
-			self.parse(input).or_else(|_| other.parse(input))
-		}
+		move |input| self.parse(input).or_else(|_| other.parse(input))
 	}
 
 	/// Replaces the error with `default` and untouched input if the parser
@@ -215,11 +212,10 @@ where
 	fn or_value(self, default: O) -> impl Parser<'a, I, O>
 	where
 		Self: Sized,
+		I: Copy,
 		O: Clone,
 	{
-		move |input: &'a I| {
-			self.parse(input).or(Ok((default.clone(), input)))
-		}
+		move |input| self.parse(input).or(Ok((default.clone(), input)))
 	}
 
 	/// If the parser succeeds, `and_then` discards the output and returns
@@ -230,7 +226,7 @@ where
 		Self: Sized,
 		Q: Parser<'a, I, OX>,
 	{
-		move |input: &'a I| {
+		move |input| {
 			self.parse(input).and_then(|(_, rest)| next.parse(rest))
 		}
 	}
@@ -242,7 +238,7 @@ where
 		Self: Sized,
 		Q: Parser<'a, I, OX>,
 	{
-		move |input: &'a I| {
+		move |input| {
 			let (output, rest) = self.parse(input)?;
 			let (_, rest) = next.parse(rest)?;
 
@@ -251,12 +247,11 @@ where
 	}
 }
 
-impl<'a, I, O, F> Parser<'a, I, O> for F
+impl<I, O, F> Parser<'_, I, O> for F
 where
-	I: 'a + ?Sized,
-	F: Fn(&'a I) -> PResult<'a, I, O>,
+	F: Fn(I) -> Result<(O, I), Error>,
 {
-	fn parse(&self, input: &'a I) -> PResult<'a, I, O> {
+	fn parse(&self, input: I) -> PResult<I, O> {
 		self(input)
 	}
 }
