@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 
 use komb::{
-	combinator::{choice, delimited, fold, optional, tuple},
-	string::{eof, literal, none_of_char, one_of0, take},
+	combinator::{choice, delimited, fold, optional},
+	string::{eof, none_of_char, one_of0, take},
 	PResult, Parser,
 };
 
@@ -24,7 +24,7 @@ fn whitespace(input: &str) -> PResult<&str, (), ()> {
 }
 
 fn string(input: &str) -> PResult<&str, String, ()> {
-	let u_esc = literal("\\u").and_then(take(4).map(|v| {
+	let u_esc = "\\u".and_then(take(4).map(|v| {
 		let s = match v {
 			Ok(s) => s,
 			Err(_) => return Err(()),
@@ -34,79 +34,70 @@ fn string(input: &str) -> PResult<&str, String, ()> {
 	}));
 
 	let character = choice((
-		literal("\\").value('\"'),
-		literal("\\\\").value('\\'),
-		literal("\\/").value('/'),
-		literal("\\b").value('\x08'),
-		literal("\\f").value('\x0C'),
-		literal("\\n").value('\n'),
-		literal("\\r").value('\r'),
-		literal("\\t").value('\t'),
+		"\\".value('\"'),
+		"\\\\".value('\\'),
+		"\\/".value('/'),
+		"\\b".value('\x08'),
+		"\\f".value('\x0C'),
+		"\\n".value('\n'),
+		"\\r".value('\r'),
+		"\\t".value('\t'),
 		u_esc,
 		none_of_char(&['\\', '"']),
 	));
 
 	let p = fold(character, String::new(), |acc, ch| acc.push(ch));
 
-	delimited(literal("\""), p, literal("\""))
-		.coerce()
-		.parse(input)
+	delimited("\"", p, "\"").coerce().parse(input)
 }
 
 fn object(input: &str) -> PResult<&str, HashMap<String, Value>, ()> {
-	let pair = tuple((
-		Parser::from(whitespace),
-		Parser::from(string),
-		Parser::from(whitespace),
-		literal(":"),
-		Parser::from(value),
-		optional(literal(",")),
-		Parser::from(whitespace),
-	))
-	.map_out(|tuple| (tuple.1, tuple.4));
+	let pair = (
+		whitespace,
+		string,
+		whitespace,
+		":",
+		value,
+		optional(","),
+		whitespace,
+	)
+		.map_out(|tuple| (tuple.1, tuple.4));
 
 	let folded = fold(pair, HashMap::new(), |acc, (k, v)| {
 		acc.insert(k, v);
 	});
 
-	delimited(
-		literal("{").before(Parser::from(whitespace)),
-		folded,
-		literal("}"),
-	)
-	.parse(input)
+	delimited("{".before(whitespace), folded, "}").parse(input)
 }
 
 fn array(input: &str) -> PResult<&str, Vec<Value>, ()> {
-	let comma = optional(literal(","));
+	let comma = optional(",");
 
-	let folded = fold(
-		Parser::from(value).before(comma),
-		Vec::new(),
-		|acc, value| acc.push(value),
-	);
+	let folded = fold(value.before(comma), Vec::new(), |acc, value| {
+		acc.push(value)
+	});
 
-	delimited(literal("["), folded, literal("]")).parse(input)
+	delimited("[", folded, "]").parse(input)
 }
 
 fn value(input: &str) -> PResult<&str, Value, ()> {
 	delimited(
-		Parser::from(whitespace),
+		whitespace,
 		choice((
-			Parser::from(string).map_out(Value::String),
-			Parser::from(object).map_out(Value::Object),
-			Parser::from(array).map_out(Value::Array),
-			literal("true").value(Value::Bool(true)),
-			literal("false").value(Value::Bool(false)),
-			literal("null").value(Value::Null),
+			string.map_out(Value::String),
+			object.map_out(Value::Object),
+			array.map_out(Value::Array),
+			"true".value(Value::Bool(true)),
+			"false".value(Value::Bool(false)),
+			"null".value(Value::Null),
 		)),
-		Parser::from(whitespace),
+		whitespace,
 	)
 	.parse(input)
 }
 
 fn parser(input: &str) -> PResult<&str, Value, ()> {
-	Parser::from(value).before(eof()).parse(input)
+	value.before(eof()).parse(input)
 }
 
 fn main() {
