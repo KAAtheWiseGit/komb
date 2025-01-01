@@ -1,8 +1,8 @@
 // TODO: examples
 #![doc = include_str!("../README.md")]
 #![no_std]
-#![allow(dead_code)]
 #![allow(missing_docs)]
+#![allow(dead_code)]
 extern crate alloc;
 
 pub mod combinator;
@@ -97,7 +97,10 @@ pub trait Parse<'a, I, O> {
 	fn parse(&self, input: I) -> PResult<I, O>;
 
 	/// Creates a copy of the parser.
-	fn clone(&self) -> impl Parse<'a, I, O> {
+	fn clone(&self) -> impl Parse<'a, I, O>
+	where
+		Self: Sized,
+	{
 		move |input| self.parse(input)
 	}
 
@@ -253,5 +256,183 @@ where
 {
 	fn parse(&self, input: I) -> PResult<I, O> {
 		self(input)
+	}
+}
+
+use alloc::boxed::Box;
+
+pub struct Parser<'a, I, O>(Box<dyn Parse<'a, I, O> + 'a>);
+
+impl<I, O> Parser<'_, I, O> {
+	pub fn parse(&self, input: I) -> PResult<I, O> {
+		self.0.parse(input)
+	}
+
+	pub fn from<'p>(parser: impl Parse<'p, I, O> + 'p) -> Parser<'p, I, O> {
+		Parser(Box::new(parser))
+	}
+
+	/// Creates a copy of the parser.
+	fn clone(&self) -> Parser<I, O> {
+		let f = move |input| self.parse(input);
+		Parser::from(f)
+	}
+
+	/// Converts the output type using the `Into` trait.
+	fn coerce<'s, OX>(self) -> Parser<'s, I, OX>
+	where
+		Self: 's,
+		O: Into<OX>,
+	{
+		let f = move |input| match self.parse(input) {
+			Ok((out, rest)) => Ok((out.into(), rest)),
+			Err(err) => Err(err),
+		};
+		Parser::from(f)
+	}
+
+	/// Transform the output or return an error.
+	///
+	/// Provides an ergonomic way to make fallible transforms on output
+	/// without having to juggle the input.  The function `f` is passed
+	/// `Ok(output)` if the parser succeeded or `Err(error)` if it failed.
+	/// If the output gets transformed into another `Ok` output, `rest`
+	/// isn't changed.  If an error is transformed into `Ok`, `rest` equals
+	/// the original `input`.
+	fn map<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
+	where
+		Self: 's,
+		I: Copy,
+		F: Fn(Result<O, Error>) -> Result<OX, Error> + 's,
+	{
+		let f = move |input| {
+			let (res, rest) = match self.parse(input) {
+				Ok((out, rest)) => {
+					let res = Ok(out);
+					(f(res), rest)
+				}
+				Err(err) => {
+					let res = Err(err);
+					(f(res), input)
+				}
+			};
+
+			match res {
+				Ok(out) => Ok((out, rest)),
+				Err(err) => Err(err),
+			}
+		};
+		Parser::from(f)
+	}
+
+	/// Applies a transformation to the output or does nothing if the parser
+	/// returns an error.
+	fn map_out<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
+	where
+		Self: 's,
+		F: Fn(O) -> OX + 's,
+	{
+		let f = move |input| {
+			self.parse(input).map(|(out, rest)| (f(out), rest))
+		};
+		Parser::from(f)
+	}
+
+	/// Applies a transformation to the error or does nothing if the parse
+	/// succeeds.
+	fn map_err<'s, F>(self, f: F) -> Parser<'s, I, O>
+	where
+		Self: 's,
+		F: Fn(Error) -> Error + 's,
+	{
+		let f = move |input| self.parse(input).map_err(&f);
+		Parser::from(f)
+	}
+
+	/// Replace the output of a parser with `value`.
+	///
+	/// If the parser fails, the error remains unchanged.
+	fn value<'s, OX>(self, value: OX) -> Parser<'s, I, OX>
+	where
+		Self: 's,
+		OX: Clone + 's,
+	{
+		self.map_out(move |_| value.clone())
+	}
+
+	/// Attach context to the error if the parser fails.
+	fn with_context<'s, F>(self, f: F) -> Parser<'s, I, O>
+	where
+		Self: 's,
+		F: Fn() -> Context + 's,
+	{
+		self.map_err(move |e| e.with_context(&f))
+	}
+
+	/// Attach a message to the error if the parser fails.
+	fn with_message<'s, F, S>(self, f: F) -> Parser<'s, I, O>
+	where
+		Self: 's,
+		F: Fn() -> S + 's,
+		S: AsRef<str>,
+	{
+		self.with_context(move || Context::from_message(f()))
+	}
+
+	/// Calls the `other` parser if this one fails and returns it's result
+	/// instead.
+	fn or<'s>(self, other: Parser<'s, I, O>) -> Parser<'s, I, O>
+	where
+		Self: 's,
+		I: Copy,
+	{
+		let f = move |input| {
+			self.parse(input).or_else(|_| other.parse(input))
+		};
+		Parser::from(f)
+	}
+
+	/// Replaces the error with `default` and untouched input if the parser
+	/// fails.  Similar to [`Result::or`], which it uses under the hood.
+	fn or_value<'s>(self, default: O) -> Parser<'s, I, O>
+	where
+		Self: 's,
+		I: Copy,
+		O: Clone,
+	{
+		let f = move |input| {
+			self.parse(input).or(Ok((default.clone(), input)))
+		};
+		Parser::from(f)
+	}
+
+	/// If the parser succeeds, `and_then` discards the output and returns
+	/// the result of the `next` parser.  If either parser fails, the error
+	/// is returned immediately.
+	fn and_then<'s, OX>(self, next: Parser<'s, I, OX>) -> Parser<'s, I, OX>
+	where
+		Self: 's,
+		OX: 's,
+	{
+		let f = move |input| {
+			self.parse(input).and_then(|(_, rest)| next.parse(rest))
+		};
+		Parser::from(f)
+	}
+
+	/// Parse `next` after `self` and discard its output.  If either parser
+	/// fails, the error is returned immediately.
+	fn before<'s, OX>(self, next: Parser<'s, I, OX>) -> Parser<'s, I, O>
+	where
+		Self: 's,
+		OX: 's,
+	{
+		let f = move |input| {
+			let (output, rest) = self.parse(input)?;
+			let (_, rest) = next.parse(rest)?;
+
+			Ok((output, rest))
+		};
+		Parser::from(f)
 	}
 }
