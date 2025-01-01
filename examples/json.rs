@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use komb::{
 	combinator::{choice, delimited, fold, optional},
 	string::{eof, none_of_char, one_of0, take},
-	Context, PResult, Parser,
+	Context, PResult, Parse,
 };
 
 #[derive(Debug, Clone)]
@@ -19,11 +19,11 @@ enum Value {
 	Object(HashMap<String, Value>),
 }
 
-fn whitespace<'a>() -> impl Parser<'a, &'a str, ()> {
+fn whitespace<'a>() -> impl Parse<'a, &'a str, ()> {
 	one_of0(&[' ', '\n', '\r', '\t']).value(())
 }
 
-fn string<'a>() -> impl Parser<'a, &'a str, String> {
+fn string<'a>() -> impl Parse<'a, &'a str, String> {
 	let u_esc = "\\u".and_then(take(4).map(|v| {
 		let s = match v {
 			Ok(s) => s,
@@ -56,7 +56,7 @@ fn string<'a>() -> impl Parser<'a, &'a str, String> {
 	delimited('"', p, '"').coerce()
 }
 
-fn object<'a>() -> impl Parser<'a, &'a str, HashMap<String, Value>> {
+fn object<'a>() -> impl Parse<'a, &'a str, HashMap<String, Value>> {
 	let comma = optional(',');
 
 	let pair = (
@@ -77,7 +77,7 @@ fn object<'a>() -> impl Parser<'a, &'a str, HashMap<String, Value>> {
 	delimited('{'.before(whitespace()), folded, '}')
 }
 
-fn array<'a>() -> impl Parser<'a, &'a str, Vec<Value>> {
+fn array<'a>() -> impl Parse<'a, &'a str, Vec<Value>> {
 	let comma = optional(',');
 
 	let folded = fold(value.before(comma), Vec::new(), |acc, value| {

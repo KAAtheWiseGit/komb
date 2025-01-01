@@ -1,4 +1,4 @@
-use crate::{PResult, Parser};
+use crate::{PResult, Parse};
 
 pub struct Choice<P>(P);
 
@@ -6,7 +6,7 @@ pub struct Choice<P>(P);
 /// fail, the error from the last one is returned.
 ///
 /// ```rust
-/// use komb::Parser;
+/// use komb::Parse;
 /// use komb::combinator::choice;
 ///
 /// let p = choice(("a", "b", "c"));
@@ -22,12 +22,12 @@ pub fn choice<P>(parsers: P) -> Choice<P> {
 macro_rules! impl_choice {
 	($($type:ident: $index:tt),*; $lastp:ident: $lasti:tt) => {
 
-	impl<'a, I, O, $($type,)* $lastp> Parser<'a, I, O>
+	impl<'a, I, O, $($type,)* $lastp> Parse<'a, I, O>
 		for Choice<($($type,)*$lastp)>
 	where
 		I: Copy,
-		$($type: Parser<'a, I, O>,)*
-		$lastp: Parser<'a, I, O>,
+		$($type: Parse<'a, I, O>,)*
+		$lastp: Parse<'a, I, O>,
 	{
 		fn parse(&self, input: I) -> PResult<I, O> {
 			$(

@@ -4,23 +4,23 @@ mod choice;
 mod tuple;
 pub use choice::choice;
 
-use crate::{Context, Error, Parser};
+use crate::{Context, Error, Parse};
 
 /// Makes the passed parser optional.  That is, it'll return `Ok((None, input))`
 /// if the underlying parser fails.  The input won't be consumed.
 ///
 /// ```rust
-/// use komb::{Parser, combinator::optional};
+/// use komb::{Parse, combinator::optional};
 ///
 /// let p = optional("lit");
 ///
 /// assert_eq!(Ok((Some("lit"), " rest")), p.parse("lit rest"));
 /// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
 /// ```
-pub fn optional<'a, I, O, P>(parser: P) -> impl Parser<'a, I, Option<O>>
+pub fn optional<'a, I, O, P>(parser: P) -> impl Parse<'a, I, Option<O>>
 where
 	I: Copy,
-	P: Parser<'a, I, O>,
+	P: Parse<'a, I, O>,
 {
 	move |input| match parser.parse(input) {
 		Ok((out, rest)) => Ok((Some(out), rest)),
@@ -34,7 +34,7 @@ where
 /// an error the input is not consumed.
 ///
 /// ```rust
-/// use komb::{Parser, combinator::not};
+/// use komb::{Parse, combinator::not};
 ///
 /// let p = not("str");
 ///
@@ -42,10 +42,10 @@ where
 /// assert!(p.parse("other").is_ok());
 /// assert_eq!("other", p.parse("other").unwrap().1);
 /// ```
-pub fn not<'a, I, O, P>(parser: P) -> impl Parser<'a, I, Error>
+pub fn not<'a, I, O, P>(parser: P) -> impl Parse<'a, I, Error>
 where
 	I: Copy,
-	P: Parser<'a, I, O>,
+	P: Parse<'a, I, O>,
 {
 	move |input| match parser.parse(input) {
 		Ok((_, _)) => Err(Context::from_message(
@@ -64,7 +64,7 @@ where
 /// returned.  Otherwise the input of `content` is returned.
 ///
 /// ```rust
-/// use komb::{Parser, combinator::delimited};
+/// use komb::{Parse, combinator::delimited};
 /// use komb::string::alphabetic0;
 ///
 /// let p = delimited(
@@ -81,12 +81,12 @@ pub fn delimited<'a, I, O0, P0, O1, P1, O2, P2>(
 	left: P0,
 	content: P1,
 	right: P2,
-) -> impl Parser<'a, I, O1>
+) -> impl Parse<'a, I, O1>
 where
 	I: Copy,
-	P0: Parser<'a, I, O0>,
-	P1: Parser<'a, I, O1>,
-	P2: Parser<'a, I, O2>,
+	P0: Parse<'a, I, O0>,
+	P1: Parse<'a, I, O1>,
+	P2: Parse<'a, I, O2>,
 {
 	move |input| {
 		let (_, rest) = left
@@ -114,7 +114,7 @@ where
 /// if `parser` never errors out, `fold` will hang forever.
 ///
 /// ```rust
-/// use komb::{Parser, combinator::fold, string::any_char};
+/// use komb::{Parse, combinator::fold, string::any_char};
 ///
 /// let p = fold(
 ///     any_char().before(','),
@@ -132,10 +132,10 @@ pub fn fold<'a, I, O, OX, P, F>(
 	parser: P,
 	acc: OX,
 	apply: F,
-) -> impl Parser<'a, I, OX>
+) -> impl Parse<'a, I, OX>
 where
 	I: Copy,
-	P: Parser<'a, I, O>,
+	P: Parse<'a, I, O>,
 	OX: Clone,
 	F: Fn(&mut OX, O),
 {

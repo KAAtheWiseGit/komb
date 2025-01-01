@@ -1,12 +1,12 @@
-use crate::{PResult, Parser};
+use crate::{PResult, Parse};
 
 macro_rules! impl_tuple {
 	($($type:ident $o:ident $index:tt),*) => {
 
-	impl <'a, I, $($type, $o,)*> Parser<'a, I, ($($o,)*)> for ($($type,)*)
+	impl <'a, I, $($type, $o,)*> Parse<'a, I, ($($o,)*)> for ($($type,)*)
 	where
 		I: Copy,
-		$($type: Parser<'a, I, $o>,)*
+		$($type: Parse<'a, I, $o>,)*
 	{
 		fn parse(&self, input: I) -> PResult<I, ($($o,)*)> {
 			// This is an ugly, ugly hack.  The tuple
