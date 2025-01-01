@@ -2,14 +2,21 @@
 //!
 //! All of the parsers return [`StringError`] for easier compositon.
 
-use thiserror::Error;
-
 use crate::{combinator::choice, Context, Error, Parser};
 
 /// Kitchen-sink error.
-#[derive(Debug, Error)]
-#[error("Unmatched")]
+#[derive(Debug)]
 pub struct Unmatched();
+
+use core::fmt;
+
+impl fmt::Display for Unmatched {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str("Failed to match")
+	}
+}
+
+impl core::error::Error for Unmatched {}
 
 pub fn literal<'a, 's: 'a>(s: &'s str) -> Parser<'a, &'a str, &'a str> {
 	let f = move |input: &'a str| {

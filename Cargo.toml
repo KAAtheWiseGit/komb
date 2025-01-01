@@ -7,8 +7,5 @@ authors = ["Andrej Kolčin <self@kaathewise.net>"]
 description = "A primitive parser combinator library"
 repository = "https://github.com/kaathewisegit/komb"
 
-[dependencies]
-thiserror = { version = "2.0.4", default-features = false }
-
 [lints.rust]
 missing_docs = "warn"
