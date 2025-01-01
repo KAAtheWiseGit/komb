@@ -10,16 +10,13 @@ mod context;
 mod error;
 pub mod string;
 
-pub use context::Context;
-pub use error::Error;
-
 /// The result type returned by parsers.
 ///
 /// The lifetime `'a` is applied to the input of type `I`, which is typically
 /// unsized (usually `str` or `[u8]`).  If the parser succeeds, an `(output,
 /// rest)` tuple is returned, where `output` is the type created by the parser
 /// and `rest` is a sub-slice of input with the parsed part cut off.
-pub type PResult<I, O> = Result<(O, I), Error>;
+pub type PResult<I, O, E> = Result<(O, I), E>;
 
 /// The core trait which defines parsers.
 ///
@@ -54,7 +51,7 @@ pub type PResult<I, O> = Result<(O, I), Error>;
 /// ```
 ///
 /// Most custom parsers can be created using the provided ones.  Since these
-/// return unnamed closures, `-> impl Parse<'a, I, O>` has to be used as the
+/// return unnamed closures, `-> impl Parse<'a, I, O, E>` has to be used as the
 /// return type.
 ///
 /// ```rust
@@ -89,44 +86,46 @@ pub type PResult<I, O> = Result<(O, I), Error>;
 /// methods](#provided-methods).
 ///
 /// [impl]: #impl-Parser<'a,+I,+O,+E>-for-F
-pub trait Parse<'a, I, O> {
+pub trait Parse<'a, I, O, E> {
 	/// The core parsing method.
 	///
 	/// See the general [`Parser`] and [`PResult`] documentations for
 	/// pointers on implementing it.
-	fn parse(&self, input: I) -> PResult<I, O>;
+	fn parse(&self, input: I) -> PResult<I, O, E>;
 }
 
-impl<I, O, F> Parse<'_, I, O> for F
+impl<I, O, E, F> Parse<'_, I, O, E> for F
 where
-	F: Fn(I) -> Result<(O, I), Error>,
+	F: Fn(I) -> Result<(O, I), E>,
 {
-	fn parse(&self, input: I) -> PResult<I, O> {
+	fn parse(&self, input: I) -> PResult<I, O, E> {
 		self(input)
 	}
 }
 
 use alloc::boxed::Box;
 
-pub struct Parser<'a, I, O>(Box<dyn Parse<'a, I, O> + 'a>);
+pub struct Parser<'a, I, O, E>(Box<dyn Parse<'a, I, O, E> + 'a>);
 
-impl<I, O> Parser<'_, I, O> {
-	pub fn parse(&self, input: I) -> PResult<I, O> {
+impl<I, O, E> Parser<'_, I, O, E> {
+	pub fn parse(&self, input: I) -> PResult<I, O, E> {
 		self.0.parse(input)
 	}
 
-	pub fn from<'p>(parser: impl Parse<'p, I, O> + 'p) -> Parser<'p, I, O> {
+	pub fn from<'p>(
+		parser: impl Parse<'p, I, O, E> + 'p,
+	) -> Parser<'p, I, O, E> {
 		Parser(Box::new(parser))
 	}
 
 	/// Creates a copy of the parser.
-	fn clone(&self) -> Parser<I, O> {
+	fn clone(&self) -> Parser<I, O, E> {
 		let f = move |input| self.parse(input);
 		Parser::from(f)
 	}
 
 	/// Converts the output type using the `Into` trait.
-	pub fn coerce<'s, OX>(self) -> Parser<'s, I, OX>
+	pub fn coerce<'s, OX>(self) -> Parser<'s, I, OX, E>
 	where
 		Self: 's,
 		O: Into<OX>,
@@ -146,11 +145,11 @@ impl<I, O> Parser<'_, I, O> {
 	/// If the output gets transformed into another `Ok` output, `rest`
 	/// isn't changed.  If an error is transformed into `Ok`, `rest` equals
 	/// the original `input`.
-	pub fn map<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
+	pub fn map<'s, OX, F>(self, f: F) -> Parser<'s, I, OX, E>
 	where
 		Self: 's,
 		I: Copy,
-		F: Fn(Result<O, Error>) -> Result<OX, Error> + 's,
+		F: Fn(Result<O, E>) -> Result<OX, E> + 's,
 	{
 		let f = move |input| {
 			let (res, rest) = match self.parse(input) {
@@ -174,7 +173,7 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Applies a transformation to the output or does nothing if the parser
 	/// returns an error.
-	pub fn map_out<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
+	pub fn map_out<'s, OX, F>(self, f: F) -> Parser<'s, I, OX, E>
 	where
 		Self: 's,
 		F: Fn(O) -> OX + 's,
@@ -187,10 +186,10 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Applies a transformation to the error or does nothing if the parse
 	/// succeeds.
-	pub fn map_err<'s, F>(self, f: F) -> Parser<'s, I, O>
+	pub fn map_err<'s, F>(self, f: F) -> Parser<'s, I, O, E>
 	where
 		Self: 's,
-		F: Fn(Error) -> Error + 's,
+		F: Fn(E) -> E + 's,
 	{
 		let f = move |input| self.parse(input).map_err(&f);
 		Parser::from(f)
@@ -199,7 +198,7 @@ impl<I, O> Parser<'_, I, O> {
 	/// Replace the output of a parser with `value`.
 	///
 	/// If the parser fails, the error remains unchanged.
-	pub fn value<'s, OX>(self, value: OX) -> Parser<'s, I, OX>
+	pub fn value<'s, OX>(self, value: OX) -> Parser<'s, I, OX, E>
 	where
 		Self: 's,
 		OX: Clone + 's,
@@ -207,28 +206,9 @@ impl<I, O> Parser<'_, I, O> {
 		self.map_out(move |_| value.clone())
 	}
 
-	/// Attach context to the error if the parser fails.
-	pub fn with_context<'s, F>(self, f: F) -> Parser<'s, I, O>
-	where
-		Self: 's,
-		F: Fn() -> Context + 's,
-	{
-		self.map_err(move |e| e.with_context(&f))
-	}
-
-	/// Attach a message to the error if the parser fails.
-	pub fn with_message<'s, F, S>(self, f: F) -> Parser<'s, I, O>
-	where
-		Self: 's,
-		F: Fn() -> S + 's,
-		S: AsRef<str>,
-	{
-		self.with_context(move || Context::from_message(f()))
-	}
-
 	/// Calls the `other` parser if this one fails and returns it's result
 	/// instead.
-	pub fn or<'s>(self, other: Parser<'s, I, O>) -> Parser<'s, I, O>
+	pub fn or<'s>(self, other: Parser<'s, I, O, E>) -> Parser<'s, I, O, E>
 	where
 		Self: 's,
 		I: Copy,
@@ -241,7 +221,7 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Replaces the error with `default` and untouched input if the parser
 	/// fails.  Similar to [`Result::or`], which it uses under the hood.
-	pub fn or_value<'s>(self, default: O) -> Parser<'s, I, O>
+	pub fn or_value<'s>(self, default: O) -> Parser<'s, I, O, E>
 	where
 		Self: 's,
 		I: Copy,
@@ -258,8 +238,8 @@ impl<I, O> Parser<'_, I, O> {
 	/// is returned immediately.
 	pub fn and_then<'s, OX>(
 		self,
-		next: Parser<'s, I, OX>,
-	) -> Parser<'s, I, OX>
+		next: Parser<'s, I, OX, E>,
+	) -> Parser<'s, I, OX, E>
 	where
 		Self: 's,
 		OX: 's,
@@ -272,7 +252,10 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Parse `next` after `self` and discard its output.  If either parser
 	/// fails, the error is returned immediately.
-	pub fn before<'s, OX>(self, next: Parser<'s, I, OX>) -> Parser<'s, I, O>
+	pub fn before<'s, OX>(
+		self,
+		next: Parser<'s, I, OX, E>,
+	) -> Parser<'s, I, O, E>
 	where
 		Self: 's,
 		OX: 's,

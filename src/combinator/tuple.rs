@@ -1,12 +1,12 @@
 use crate::{PResult, Parser};
 
-pub trait Tuple<I, O> {
-	fn parse(&self, input: I) -> PResult<I, O>;
+pub trait Tuple<I, O, E> {
+	fn parse(&self, input: I) -> PResult<I, O, E>;
 }
 
-pub fn tuple<'p, P, I, O>(parsers: P) -> Parser<'p, I, O>
+pub fn tuple<'p, P, I, O, E>(parsers: P) -> Parser<'p, I, O, E>
 where
-	P: 'p + Tuple<I, O>,
+	P: 'p + Tuple<I, O, E>,
 {
 	let f = move |input| parsers.parse(input);
 	Parser::from(f)
@@ -15,18 +15,18 @@ where
 // TODO: deduplicate
 macro_rules! to_type {
 	($o:ident) => {
-		Parser<'_, I, $o>
+		Parser<'_, I, $o, E>
 	}
 }
 
 macro_rules! impl_tuple {
 	($($o:ident $index:tt),*) => {
 
-	impl <'a, I, $($o,)*> Tuple<I, ($($o,)*)> for ($(to_type!($o),)*)
+	impl <'a, I, E, $($o,)*> Tuple<I, ($($o,)*), E> for ($(to_type!($o),)*)
 	where
 		I: Copy,
 	{
-		fn parse(&self, input: I) -> PResult<I, ($($o,)*)> {
+		fn parse(&self, input: I) -> PResult<I, ($($o,)*), E> {
 			// This is an ugly, ugly hack.  The tuple
 			// expressions should evaluate their arguments
 			// left to right, which allows us to modify

@@ -5,7 +5,7 @@ mod tuple;
 pub use choice::choice;
 pub use tuple::tuple;
 
-use crate::{Context, Error, Parser};
+use crate::Parser;
 
 /// Makes the passed parser optional.  That is, it'll return `Ok((None, input))`
 /// if the underlying parser fails.  The input won't be consumed.
@@ -18,10 +18,13 @@ use crate::{Context, Error, Parser};
 /// assert_eq!(Ok((Some("lit"), " rest")), p.parse("lit rest"));
 /// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
 /// ```
-pub fn optional<'a, I, O>(parser: Parser<'a, I, O>) -> Parser<'a, I, Option<O>>
+pub fn optional<'a, I, O, E>(
+	parser: Parser<'a, I, O, E>,
+) -> Parser<'a, I, Option<O>, E>
 where
 	I: Copy + 'a,
 	O: 'a,
+	E: 'a,
 {
 	let f = move |input| match parser.parse(input) {
 		Ok((out, rest)) => Ok((Some(out), rest)),
@@ -44,16 +47,14 @@ where
 /// assert!(p.parse("other").is_ok());
 /// assert_eq!("other", p.parse("other").unwrap().1);
 /// ```
-pub fn not<'a, I, O>(parser: Parser<'a, I, O>) -> Parser<'a, I, Error>
+pub fn not<'a, I, O, E>(parser: Parser<'a, I, O, E>) -> Parser<'a, I, E, O>
 where
 	I: Copy + 'a,
 	O: 'a,
+	E: 'a,
 {
 	let f = move |input| match parser.parse(input) {
-		Ok((_, _)) => Err(Context::from_message(
-			"Parser inside `not` succeeded",
-		)
-		.into()),
+		Ok((output, _)) => Err(output),
 		Err(err) => Ok((err, input)),
 	};
 	Parser::from(f)
@@ -80,16 +81,17 @@ where
 /// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
 /// assert!(p.parse("(notclosed").is_err());
 /// ```
-pub fn delimited<'a, I, OL, O, OR>(
-	left: Parser<'a, I, OL>,
-	content: Parser<'a, I, O>,
-	right: Parser<'a, I, OR>,
-) -> Parser<'a, I, O>
+pub fn delimited<'a, I, OL, O, OR, E>(
+	left: Parser<'a, I, OL, E>,
+	content: Parser<'a, I, O, E>,
+	right: Parser<'a, I, OR, E>,
+) -> Parser<'a, I, O, E>
 where
 	I: Copy + 'a,
 	OL: 'a,
 	O: 'a,
 	OR: 'a,
+	E: 'a,
 {
 	tuple((left, content, right)).map_out(|tuple| tuple.1)
 }
@@ -116,15 +118,16 @@ where
 ///
 /// assert_eq!(vec!['a', 'b', 'c', 'd'], output);
 /// ```
-pub fn fold<'a, I, O, OX, F>(
-	parser: Parser<'a, I, O>,
+pub fn fold<'a, I, O, OX, E, F>(
+	parser: Parser<'a, I, O, E>,
 	acc: OX,
 	apply: F,
-) -> Parser<'a, I, OX>
+) -> Parser<'a, I, OX, E>
 where
 	I: Copy + 'a,
 	O: 'a,
 	OX: Clone + 'a,
+	E: 'a,
 	F: Fn(&mut OX, O) + 'a,
 {
 	let f = move |input| {

@@ -1,7 +1,7 @@
 use crate::{PResult, Parser};
 
-pub trait Choice<I, O> {
-	fn parse(&self, input: I) -> PResult<I, O>;
+pub trait Choice<I, O, E> {
+	fn parse(&self, input: I) -> PResult<I, O, E>;
 }
 
 /// Picks the first succeeding parser and returns it's output.  If all parsers
@@ -18,9 +18,9 @@ pub trait Choice<I, O> {
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
 /// assert!(p.parse("d").is_err());
 /// ```
-pub fn choice<'p, P, I, O>(parsers: P) -> Parser<'p, I, O>
+pub fn choice<'p, P, I, O, E>(parsers: P) -> Parser<'p, I, O, E>
 where
-	P: 'p + Choice<I, O>,
+	P: 'p + Choice<I, O, E>,
 {
 	let f = move |input| parsers.parse(input);
 	Parser::from(f)
@@ -28,18 +28,18 @@ where
 
 macro_rules! to_type {
 	($t:tt) => {
-		Parser<'_, I, O>
+		Parser<'_, I, O, E>
 	}
 }
 
 macro_rules! impl_choice {
 	($($index:tt),*; $lasti:tt) => {
 
-	impl<I, O> Choice<I, O> for ($(to_type!($index),)* Parser<'_, I, O>)
+	impl<I, O, E> Choice<I, O, E> for ($(to_type!($index),)* Parser<'_, I, O, E>)
 	where
 		I: Copy,
 	{
-		fn parse(&self, input: I) -> PResult<I, O> {
+		fn parse(&self, input: I) -> PResult<I, O, E> {
 			$(
 			if let Ok((out, rest)) = self.$index.parse(input) {
 				return Ok((out, rest));

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use komb::{
 	combinator::{choice, delimited, fold, optional, tuple},
 	string::{eof, literal, none_of_char, one_of0, take},
-	Context, PResult, Parser,
+	PResult, Parser,
 };
 
 #[derive(Debug, Clone)]
@@ -19,20 +19,17 @@ enum Value {
 	Object(HashMap<String, Value>),
 }
 
-fn whitespace<'a>() -> Parser<'a, &'a str, ()> {
-	one_of0(&[' ', '\n', '\r', '\t']).value(())
+fn whitespace(input: &str) -> PResult<&str, (), ()> {
+	one_of0(&[' ', '\n', '\r', '\t']).value(()).parse(input)
 }
 
-fn string<'a>() -> Parser<'a, &'a str, String> {
+fn string(input: &str) -> PResult<&str, String, ()> {
 	let u_esc = literal("\\u").and_then(take(4).map(|v| {
 		let s = match v {
 			Ok(s) => s,
-			Err(_) => return Err(Context::from_message(
-				"The Unicode escape must be 4 characters long",
-			)
-			.into()),
+			Err(_) => return Err(()),
 		};
-		let num = u32::from_str_radix(s, 16)?;
+		let num = u32::from_str_radix(s, 16).map_err(|_| ())?;
 		Ok(char::from_u32(num).unwrap())
 	}));
 
@@ -51,18 +48,20 @@ fn string<'a>() -> Parser<'a, &'a str, String> {
 
 	let p = fold(character, String::new(), |acc, ch| acc.push(ch));
 
-	delimited(literal("\""), p, literal("\"")).coerce()
+	delimited(literal("\""), p, literal("\""))
+		.coerce()
+		.parse(input)
 }
 
-fn object<'a>() -> Parser<'a, &'a str, HashMap<String, Value>> {
+fn object(input: &str) -> PResult<&str, HashMap<String, Value>, ()> {
 	let pair = tuple((
-		whitespace(),
-		string(),
-		whitespace(),
+		Parser::from(whitespace),
+		Parser::from(string),
+		Parser::from(whitespace),
 		literal(":"),
 		Parser::from(value),
 		optional(literal(",")),
-		whitespace(),
+		Parser::from(whitespace),
 	))
 	.map_out(|tuple| (tuple.1, tuple.4));
 
@@ -70,10 +69,15 @@ fn object<'a>() -> Parser<'a, &'a str, HashMap<String, Value>> {
 		acc.insert(k, v);
 	});
 
-	delimited(literal("{").before(whitespace()), folded, literal("}"))
+	delimited(
+		literal("{").before(Parser::from(whitespace)),
+		folded,
+		literal("}"),
+	)
+	.parse(input)
 }
 
-fn array<'a>() -> Parser<'a, &'a str, Vec<Value>> {
+fn array(input: &str) -> PResult<&str, Vec<Value>, ()> {
 	let comma = optional(literal(","));
 
 	let folded = fold(
@@ -82,27 +86,27 @@ fn array<'a>() -> Parser<'a, &'a str, Vec<Value>> {
 		|acc, value| acc.push(value),
 	);
 
-	delimited(literal("["), folded, literal("]"))
+	delimited(literal("["), folded, literal("]")).parse(input)
 }
 
-fn value(input: &str) -> PResult<&str, Value> {
+fn value(input: &str) -> PResult<&str, Value, ()> {
 	delimited(
-		whitespace(),
+		Parser::from(whitespace),
 		choice((
-			string().map_out(Value::String),
-			object().map_out(Value::Object),
-			array().map_out(Value::Array),
+			Parser::from(string).map_out(Value::String),
+			Parser::from(object).map_out(Value::Object),
+			Parser::from(array).map_out(Value::Array),
 			literal("true").value(Value::Bool(true)),
 			literal("false").value(Value::Bool(false)),
 			literal("null").value(Value::Null),
 		)),
-		whitespace(),
+		Parser::from(whitespace),
 	)
 	.parse(input)
 }
 
-fn parser<'a>() -> Parser<'a, &'a str, Value> {
-	Parser::from(value).before(eof())
+fn parser(input: &str) -> PResult<&str, Value, ()> {
+	Parser::from(value).before(eof()).parse(input)
 }
 
 fn main() {
@@ -130,5 +134,9 @@ fn main() {
     }
 }"#;
 
-	println!("{:#?}", parser().parse(s));
+	let s = std::hint::black_box(s);
+
+	for _ in 0..10_000 {
+		let _ = parser(s);
+	}
 }

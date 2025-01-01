@@ -3,7 +3,7 @@
 use alloc::{vec, vec::Vec};
 use core::fmt::{self, Display};
 
-use crate::Context;
+use crate::context::Context;
 
 #[derive(Debug)]
 pub struct Error {

@@ -9,3 +9,6 @@ repository = "https://github.com/kaathewisegit/komb"
 
 [lints.rust]
 missing_docs = "warn"
+
+[profile.release]
+debug = 1
