@@ -6,11 +6,10 @@ pub struct Choice<T>(T);
 /// fail, the error from the last one is returned.
 ///
 /// ```rust
-/// use komb::Parse;
+/// use komb::Parser;
 /// use komb::combinator::choice;
-/// use komb::string::literal;
 ///
-/// let p = choice((literal("a"), literal("b"), literal("c")));
+/// let p = choice(("a", "b", "c"));
 /// assert_eq!(Ok(("a", " rest")), p.parse("a rest"));
 /// assert_eq!(Ok(("b", " rest")), p.parse("b rest"));
 /// assert_eq!(Ok(("c", " rest")), p.parse("c rest"));
@@ -72,13 +71,11 @@ mod test {
 
 	#[test]
 	fn test_macro() {
-		use crate::string::literal;
-
-		let parser = choice((literal("a"), literal("b")));
+		let parser = choice(("a", "b"));
 		let result = parser.parse("bc");
 		assert_eq!(Ok(("b", "c")), result);
 
-		let parser = choice((literal("a"), literal("b"), literal("c")));
+		let parser = choice(("a", "b", "c"));
 		let result = parser.parse("cx");
 		assert_eq!(Ok(("c", "x")), result);
 	}

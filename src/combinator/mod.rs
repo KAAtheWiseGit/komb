@@ -10,9 +10,9 @@ use crate::Parser;
 /// if the underlying parser fails.  The input won't be consumed.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::optional, string::literal};
+/// use komb::{Parser, combinator::optional};
 ///
-/// let p = optional(literal("lit"));
+/// let p = optional("lit");
 ///
 /// assert_eq!(Ok((Some("lit"), " rest")), p.parse("lit rest"));
 /// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
@@ -37,9 +37,9 @@ where
 /// an error the input is not consumed.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::not, string::literal};
+/// use komb::{Parser, combinator::not};
 ///
-/// let p = not(literal("str"));
+/// let p = not("str");
 ///
 /// assert!(p.parse("str").is_err());
 /// assert!(p.parse("other").is_ok());
@@ -67,14 +67,10 @@ where
 /// returned.  Otherwise the input of `content` is returned.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::delimited, string::literal};
+/// use komb::{Parser, combinator::delimited};
 /// use komb::string::alphabetic0;
 ///
-/// let p = delimited(
-///     literal("("),
-///     alphabetic0(),
-///     literal(")"),
-/// );
+/// let p = delimited("(", alphabetic0(), ")");
 ///
 /// assert_eq!(Ok(("word", "")), p.parse("(word)"));
 /// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
@@ -103,10 +99,10 @@ where
 /// if `parser` never errors out, `fold` will hang forever.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::fold, string::{literal, any_char}};
+/// use komb::{Parser, combinator::fold, string::any_char};
 ///
 /// let p = fold(
-///     any_char().before(literal(",")),
+///     any_char().before(","),
 ///     Vec::new(),
 ///     |v, element| {
 ///         v.push(element)
