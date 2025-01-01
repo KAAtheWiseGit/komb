@@ -2,15 +2,12 @@
 //!
 //! All of the parsers return [`StringError`] for easier compositon.
 
-use crate::{combinator::choice, Parser};
+use crate::{combinator::choice, PResult, Parser};
 
-pub fn literal<'a, 's: 'a>(
-	s: &'s str,
-) -> impl Parser<'a, &'a str, &'a str, ()> {
-	move |input: &'a str| {
-		#[allow(clippy::if_same_then_else)]
-		if input.starts_with(s) {
-			let length = s.len();
+impl<'a> Parser<'a, &'a str, &'a str, ()> for &str {
+	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, ()> {
+		if input.starts_with(self) {
+			let length = self.len();
 			Ok((&input[..length], &input[length..]))
 		} else if input.is_empty() {
 			Err(())
@@ -20,11 +17,18 @@ pub fn literal<'a, 's: 'a>(
 	}
 }
 
+impl<'a> Parser<'a, &'a str, char, ()> for char {
+	fn parse(&self, input: &'a str) -> PResult<&'a str, char, ()> {
+		let needle = *self;
+		char(move |ch| ch == needle).parse(input)
+	}
+}
+
 /// Matches a `literal` ignoring the case.  This function is ASCII-only, all
 /// other Unicode characters won't be accounted for.
 ///
 /// ```rust
-/// use komb::{Parse, string::anycase};
+/// use komb::{Parser, string::anycase};
 ///
 /// let p = anycase("select");
 ///
@@ -68,14 +72,14 @@ pub fn anycase<'a>(
 /// reference.
 ///
 /// ```rust
-/// use komb::{Parse, string::{line_end, alphanumeric0}};
+/// use komb::{Parser, string::{line_end, alphanumeric0}};
 ///
 /// let p = alphanumeric0().before(line_end());
 ///
 /// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
 /// ```
 pub fn line_end<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	choice((literal("\n"), literal("\r\n")))
+	choice(("\n", "\r\n"))
 }
 
 /// Matches a single `\n`-terminated line.
@@ -84,7 +88,7 @@ pub fn line_end<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// line ended in `\r\n`, carriage return will be part of the output.
 ///
 /// ```rust
-/// use komb::{Parse, string::line};
+/// use komb::{Parser, string::line};
 ///
 /// assert_eq!(Ok(("Hello", "world")), line().parse("Hello\nworld"));
 /// assert_eq!(Ok(("Hello\r", "world")), line().parse("Hello\r\nworld"));
@@ -100,9 +104,9 @@ pub fn line<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// Succeeds if the input is empty.
 ///
 /// ```rust
-/// use komb::{Parse, string::{eof, literal}};
+/// use komb::{Parser, string::{eof}};
 ///
-/// let p = literal("Hello world").before(eof());
+/// let p = "Hello world".before(eof());
 ///
 /// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
 /// assert!(p.parse("Hello world and then some").is_err());
@@ -154,7 +158,7 @@ macro_rules! doc1to0 {
 ///
 ///
 /// ```rust
-/// use komb::{Parse, string::take_while0};
+/// use komb::{Parser, string::take_while0};
 ///
 /// let p = take_while0(|ch| ch.is_alphanumeric());
 /// assert_eq!(Ok(("abc1", " and rest")), p.parse("abc1 and rest"));
@@ -230,7 +234,7 @@ pub fn alphabetic0<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// Uses [`char::is_alphanumeric`].
 ///
 /// ```rust
-/// use komb::{Parse, string::alphanumeric0};
+/// use komb::{Parser, string::alphanumeric0};
 ///
 /// let p = alphanumeric0();
 /// assert_eq!(Ok(("abc0", " rest")), p.parse("abc0 rest"));
@@ -247,7 +251,7 @@ pub fn alphanumeric0<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// `true`.
 ///
 /// ```rust
-/// use komb::{Parse, string::take_while1};
+/// use komb::{Parser, string::take_while1};
 ///
 /// let p = take_while1(|ch| ch == '0' || ch == '1');
 ///
@@ -335,7 +339,7 @@ pub fn alphanumeric1<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// Uses [`char::is_alphanumeric`].
 ///
 /// ```rust
-/// use komb::{Parse, string::alphabetic1};
+/// use komb::{Parser, string::alphabetic1};
 ///
 /// let p = alphabetic1();
 ///
@@ -355,7 +359,7 @@ pub fn alphabetic1<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// empty, [`Error::End`] is returned.
 ///
 /// ```rust
-/// use komb::{Parse, string::char};
+/// use komb::{Parser, string::char};
 ///
 /// let p = char(|ch| ch == '1' || ch == 'a');
 ///
@@ -405,7 +409,7 @@ pub fn none_of_char<'a, 'c: 'a>(
 /// The behaviour is the as that of [`char::is_digit`].
 ///
 /// ```rust
-/// use komb::{Parse, string::digits1};
+/// use komb::{Parser, string::digits1};
 ///
 /// let p = digits1(16);
 ///
