@@ -3,29 +3,31 @@
 mod choice;
 mod tuple;
 pub use choice::choice;
+pub use tuple::tuple;
 
-use crate::{Context, Error, Parse};
+use crate::{Context, Error, Parser};
 
 /// Makes the passed parser optional.  That is, it'll return `Ok((None, input))`
 /// if the underlying parser fails.  The input won't be consumed.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::optional};
+/// use komb::{Parse, combinator::optional, string::literal};
 ///
-/// let p = optional("lit");
+/// let p = optional(literal("lit"));
 ///
 /// assert_eq!(Ok((Some("lit"), " rest")), p.parse("lit rest"));
 /// assert_eq!(Ok((None, "lat rest")), p.parse("lat rest"));
 /// ```
-pub fn optional<'a, I, O, P>(parser: P) -> impl Parse<'a, I, Option<O>>
+pub fn optional<'a, I, O>(parser: Parser<'a, I, O>) -> Parser<'a, I, Option<O>>
 where
-	I: Copy,
-	P: Parse<'a, I, O>,
+	I: Copy + 'a,
+	O: 'a,
 {
-	move |input| match parser.parse(input) {
+	let f = move |input| match parser.parse(input) {
 		Ok((out, rest)) => Ok((Some(out), rest)),
 		Err(_) => Ok((None, input)),
-	}
+	};
+	Parser::from(f)
 }
 
 /// Swaps the parser results: if the underlying parser succeeds, `not` will
@@ -34,26 +36,27 @@ where
 /// an error the input is not consumed.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::not};
+/// use komb::{Parse, combinator::not, string::literal};
 ///
-/// let p = not("str");
+/// let p = not(literal("str"));
 ///
 /// assert!(p.parse("str").is_err());
 /// assert!(p.parse("other").is_ok());
 /// assert_eq!("other", p.parse("other").unwrap().1);
 /// ```
-pub fn not<'a, I, O, P>(parser: P) -> impl Parse<'a, I, Error>
+pub fn not<'a, I, O>(parser: Parser<'a, I, O>) -> Parser<'a, I, Error>
 where
-	I: Copy,
-	P: Parse<'a, I, O>,
+	I: Copy + 'a,
+	O: 'a,
 {
-	move |input| match parser.parse(input) {
+	let f = move |input| match parser.parse(input) {
 		Ok((_, _)) => Err(Context::from_message(
 			"Parser inside `not` succeeded",
 		)
 		.into()),
 		Err(err) => Ok((err, input)),
-	}
+	};
+	Parser::from(f)
 }
 
 // TODO: investigate discarding the delimiting parsers errors and returning a
@@ -64,31 +67,31 @@ where
 /// returned.  Otherwise the input of `content` is returned.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::delimited};
+/// use komb::{Parse, combinator::delimited, string::literal};
 /// use komb::string::alphabetic0;
 ///
 /// let p = delimited(
-///     '(',
+///     literal("("),
 ///     alphabetic0(),
-///     ')',
+///     literal(")"),
 /// );
 ///
 /// assert_eq!(Ok(("word", "")), p.parse("(word)"));
 /// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
 /// assert!(p.parse("(notclosed").is_err());
 /// ```
-pub fn delimited<'a, I, O0, P0, O1, P1, O2, P2>(
-	left: P0,
-	content: P1,
-	right: P2,
-) -> impl Parse<'a, I, O1>
+pub fn delimited<'a, I, OL, O, OR>(
+	left: Parser<'a, I, OL>,
+	content: Parser<'a, I, O>,
+	right: Parser<'a, I, OR>,
+) -> Parser<'a, I, O>
 where
-	I: Copy,
-	P0: Parse<'a, I, O0>,
-	P1: Parse<'a, I, O1>,
-	P2: Parse<'a, I, O2>,
+	I: Copy + 'a,
+	OL: 'a,
+	O: 'a,
+	OR: 'a,
 {
-	move |input| {
+	let f = move |input| {
 		let (_, rest) = left
 			.clone()
 			.with_message(|| "delimited: left parser failed")
@@ -103,7 +106,8 @@ where
 			.parse(rest)?;
 
 		Ok((output, rest))
-	}
+	};
+	Parser::from(f)
 }
 
 /// Applies `parser` and passes its output to the `apply`, which can modify the
@@ -114,10 +118,10 @@ where
 /// if `parser` never errors out, `fold` will hang forever.
 ///
 /// ```rust
-/// use komb::{Parse, combinator::fold, string::any_char};
+/// use komb::{Parse, combinator::fold, string::{literal, any_char}};
 ///
 /// let p = fold(
-///     any_char().before(','),
+///     any_char().before(literal(",")),
 ///     Vec::new(),
 ///     |v, element| {
 ///         v.push(element)
@@ -128,18 +132,18 @@ where
 ///
 /// assert_eq!(vec!['a', 'b', 'c', 'd'], output);
 /// ```
-pub fn fold<'a, I, O, OX, P, F>(
-	parser: P,
+pub fn fold<'a, I, O, OX, F>(
+	parser: Parser<'a, I, O>,
 	acc: OX,
 	apply: F,
-) -> impl Parse<'a, I, OX>
+) -> Parser<'a, I, OX>
 where
-	I: Copy,
-	P: Parse<'a, I, O>,
-	OX: Clone,
-	F: Fn(&mut OX, O),
+	I: Copy + 'a,
+	O: 'a,
+	OX: Clone + 'a,
+	F: Fn(&mut OX, O) + 'a,
 {
-	move |input| {
+	let f = move |input| {
 		let mut acc = acc.clone();
 		let mut input = input;
 
@@ -152,5 +156,6 @@ where
 		}
 
 		Ok((acc, input))
-	}
+	};
+	Parser::from(f)
 }

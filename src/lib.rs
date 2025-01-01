@@ -279,7 +279,7 @@ impl<I, O> Parser<'_, I, O> {
 	}
 
 	/// Converts the output type using the `Into` trait.
-	fn coerce<'s, OX>(self) -> Parser<'s, I, OX>
+	pub fn coerce<'s, OX>(self) -> Parser<'s, I, OX>
 	where
 		Self: 's,
 		O: Into<OX>,
@@ -299,7 +299,7 @@ impl<I, O> Parser<'_, I, O> {
 	/// If the output gets transformed into another `Ok` output, `rest`
 	/// isn't changed.  If an error is transformed into `Ok`, `rest` equals
 	/// the original `input`.
-	fn map<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
+	pub fn map<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
 	where
 		Self: 's,
 		I: Copy,
@@ -327,7 +327,7 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Applies a transformation to the output or does nothing if the parser
 	/// returns an error.
-	fn map_out<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
+	pub fn map_out<'s, OX, F>(self, f: F) -> Parser<'s, I, OX>
 	where
 		Self: 's,
 		F: Fn(O) -> OX + 's,
@@ -340,7 +340,7 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Applies a transformation to the error or does nothing if the parse
 	/// succeeds.
-	fn map_err<'s, F>(self, f: F) -> Parser<'s, I, O>
+	pub fn map_err<'s, F>(self, f: F) -> Parser<'s, I, O>
 	where
 		Self: 's,
 		F: Fn(Error) -> Error + 's,
@@ -352,7 +352,7 @@ impl<I, O> Parser<'_, I, O> {
 	/// Replace the output of a parser with `value`.
 	///
 	/// If the parser fails, the error remains unchanged.
-	fn value<'s, OX>(self, value: OX) -> Parser<'s, I, OX>
+	pub fn value<'s, OX>(self, value: OX) -> Parser<'s, I, OX>
 	where
 		Self: 's,
 		OX: Clone + 's,
@@ -361,7 +361,7 @@ impl<I, O> Parser<'_, I, O> {
 	}
 
 	/// Attach context to the error if the parser fails.
-	fn with_context<'s, F>(self, f: F) -> Parser<'s, I, O>
+	pub fn with_context<'s, F>(self, f: F) -> Parser<'s, I, O>
 	where
 		Self: 's,
 		F: Fn() -> Context + 's,
@@ -370,7 +370,7 @@ impl<I, O> Parser<'_, I, O> {
 	}
 
 	/// Attach a message to the error if the parser fails.
-	fn with_message<'s, F, S>(self, f: F) -> Parser<'s, I, O>
+	pub fn with_message<'s, F, S>(self, f: F) -> Parser<'s, I, O>
 	where
 		Self: 's,
 		F: Fn() -> S + 's,
@@ -381,7 +381,7 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Calls the `other` parser if this one fails and returns it's result
 	/// instead.
-	fn or<'s>(self, other: Parser<'s, I, O>) -> Parser<'s, I, O>
+	pub fn or<'s>(self, other: Parser<'s, I, O>) -> Parser<'s, I, O>
 	where
 		Self: 's,
 		I: Copy,
@@ -394,7 +394,7 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Replaces the error with `default` and untouched input if the parser
 	/// fails.  Similar to [`Result::or`], which it uses under the hood.
-	fn or_value<'s>(self, default: O) -> Parser<'s, I, O>
+	pub fn or_value<'s>(self, default: O) -> Parser<'s, I, O>
 	where
 		Self: 's,
 		I: Copy,
@@ -409,7 +409,10 @@ impl<I, O> Parser<'_, I, O> {
 	/// If the parser succeeds, `and_then` discards the output and returns
 	/// the result of the `next` parser.  If either parser fails, the error
 	/// is returned immediately.
-	fn and_then<'s, OX>(self, next: Parser<'s, I, OX>) -> Parser<'s, I, OX>
+	pub fn and_then<'s, OX>(
+		self,
+		next: Parser<'s, I, OX>,
+	) -> Parser<'s, I, OX>
 	where
 		Self: 's,
 		OX: 's,
@@ -422,7 +425,7 @@ impl<I, O> Parser<'_, I, O> {
 
 	/// Parse `next` after `self` and discard its output.  If either parser
 	/// fails, the error is returned immediately.
-	fn before<'s, OX>(self, next: Parser<'s, I, OX>) -> Parser<'s, I, O>
+	pub fn before<'s, OX>(self, next: Parser<'s, I, OX>) -> Parser<'s, I, O>
 	where
 		Self: 's,
 		OX: 's,
