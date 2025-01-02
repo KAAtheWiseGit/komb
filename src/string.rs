@@ -2,6 +2,8 @@
 //!
 //! All of the parsers return [`Error`] for easier compositon.
 
+use core::num::ParseIntError;
+
 use crate::{combinator::choice, PResult, Parser};
 
 /// TODO: docs
@@ -11,10 +13,23 @@ pub enum Error<'a> {
 	End {
 		/// A zero-width slice which points to the end of the input
 		/// string.
-		ptr: &'a str,
+		span: &'a str,
 	},
-	/// TODO: replace with concrete errors with locations.
-	Unit,
+	/// The parser failed to match.
+	Unmatched {
+		/// The input prefix which the parser encountered instead of
+		/// what it expected.
+		span: &'a str,
+	},
+	/// Returned by [`eof`] when the input isn't empty.
+	NotEnd,
+	/// Failed to parse an integer.
+	ParseInt {
+		/// The error returned by the integer `from_str` and `from_str_radix` methods.
+		error: ParseIntError,
+		/// The integer substring which was parsed.
+		span: &'a str,
+	},
 }
 
 use core::fmt;
@@ -25,7 +40,18 @@ impl fmt::Display for Error<'_> {
 			Error::End { .. } => {
 				f.write_str("Unexpected end of input")?;
 			}
-			Error::Unit => f.write_str("TODO")?,
+			Error::Unmatched { span: literal } => {
+				f.write_fmt(format_args!(
+					"Parser failed to match '{literal}'"
+				))?;
+			}
+			Error::NotEnd => f.write_str("Input not empty")?,
+			Error::ParseInt { error, span } => {
+				f.write_fmt(format_args!(
+					"Failed to parse '{span}'"
+				))?;
+				error.fmt(f)?;
+			}
 		}
 
 		Ok(())
@@ -36,9 +62,13 @@ impl core::error::Error for Error<'_> {}
 
 impl Error<'_> {
 	/// Creates a new `End` error which points to the end of `input`.
-	pub fn end(input: &str) -> Error {
+	fn end(input: &str) -> Error {
 		let ptr = &input[input.len()..input.len()];
-		Error::End { ptr }
+		Error::End { span: ptr }
+	}
+
+	fn unmatched(literal: &str) -> Error {
+		Error::Unmatched { span: literal }
 	}
 }
 
@@ -71,7 +101,7 @@ impl<'a> Parser<'a, &'a str, &'a str, Error<'a>> for &str {
 		} else if input.len() < self.len() {
 			Err(Error::end(input))
 		} else {
-			Err(Error::Unit)
+			Err(Error::unmatched(&input[..self.len()]))
 		}
 	}
 }
@@ -107,7 +137,7 @@ pub fn anycase<'a>(
 		let length = literal.len();
 
 		let mut literal_chars = literal.chars();
-		let mut input_chars = input.chars();
+		let mut input_chars = input.char_indices();
 
 		loop {
 			let Some(lit_ch) = literal_chars.next() else {
@@ -117,14 +147,16 @@ pub fn anycase<'a>(
 				));
 			};
 
-			let Some(input_ch) = input_chars.next() else {
+			let Some((i, input_ch)) = input_chars.next() else {
 				return Err(Error::end(input));
 			};
 
 			if lit_ch.to_ascii_lowercase()
 				!= input_ch.to_ascii_lowercase()
 			{
-				return Err(Error::Unit);
+				return Err(Error::unmatched(
+					&input[..i + input_ch.len_utf8()],
+				));
 			}
 		}
 	}
@@ -177,7 +209,7 @@ pub fn eof(input: &str) -> PResult<&str, (), Error> {
 	if input.is_empty() {
 		Ok(((), input))
 	} else {
-		Err(Error::Unit)
+		Err(Error::NotEnd)
 	}
 }
 
@@ -417,7 +449,7 @@ pub fn alphabetic1(input: &str) -> PResult<&str, &str, Error> {
 
 /// Returns the first character in input if it satisfies the predicate.
 ///
-/// If the predicate fails, [`Error::Unit`] is returned.  If the string is
+/// If the predicate fails, [`Error::Unmatched`] is returned.  If the string is
 /// empty, [`Error::End`] is returned.
 ///
 /// This function returns a borrowed string slice `&str` to preserve the
@@ -441,11 +473,11 @@ where
 			return Err(Error::end(input));
 		};
 
+		let lenght = ch.len_utf8();
 		if f(ch) {
-			let lenght = ch.len_utf8();
 			Ok((&input[..lenght], &input[lenght..]))
 		} else {
-			Err(Error::Unit)
+			Err(Error::unmatched(&input[..lenght]))
 		}
 	}
 }
@@ -493,10 +525,10 @@ macro_rules! impl_parse_uint {
 		pub fn $name<'a>(
 		) -> impl Parser<'a, &'a str, ($type, &'a str), Error<'a>> {
 			|input: &'a str| {
-				let (s, rest) = digits1(10)
-					.parse(input)
-					.map_err(|_| Error::Unit)?;
-				let out = s.parse().map_err(|_| Error::Unit)?;
+				let (s, rest) = digits1(10).parse(input)?;
+				let out = s.parse().map_err(|error| {
+					Error::ParseInt { error, span: s }
+				})?;
 
 				Ok(((out, s), rest))
 			}
