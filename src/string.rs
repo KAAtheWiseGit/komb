@@ -16,6 +16,23 @@ pub enum Error {
 	Unit,
 }
 
+use core::fmt;
+
+impl fmt::Display for Error {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Error::End { .. } => {
+				f.write_str("Unexpected end of input")?;
+			}
+			Error::Unit => f.write_str("TODO")?,
+		}
+
+		Ok(())
+	}
+}
+
+impl core::error::Error for Error {}
+
 impl Error {
 	/// Creates a new `End` error which points to the end of `input`.
 	pub fn end(input: &str) -> Error {
