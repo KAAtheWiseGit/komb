@@ -2,10 +2,11 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use komb::{
 	combinator::{choice, delimited, fold, optional},
-	string::{eof, none_of_char, one_of0, take},
+	string::{anycase, consume, digits1, eof, none_of_char, one_of0, take},
 	PResult, Parser,
 };
 
@@ -26,10 +27,10 @@ fn whitespace(input: &str) -> PResult<&str, (), ()> {
 fn string(input: &str) -> PResult<&str, String, ()> {
 	let u_esc = "\\u".and_then(take(4).map(|v| {
 		let s = match v {
-			Ok(s) => s,
+			Ok(s) => s.to_ascii_lowercase(),
 			Err(_) => return Err(()),
 		};
-		let num = u32::from_str_radix(s, 16).map_err(|_| ())?;
+		let num = u32::from_str_radix(&s, 16).map_err(|_| ())?;
 		Ok(char::from_u32(num).unwrap())
 	}));
 
@@ -43,12 +44,37 @@ fn string(input: &str) -> PResult<&str, String, ()> {
 		"\\r".value('\r'),
 		"\\t".value('\t'),
 		u_esc,
-		none_of_char(&['\\', '"']),
+		none_of_char(&['\\', '"'])
+			.map_out(|s| s.chars().next().unwrap()),
 	));
 
 	let p = fold(character, String::new(), |acc, ch| acc.push(ch));
 
 	delimited("\"", p, "\"").coerce().parse(input)
+}
+
+fn number(input: &str) -> PResult<&str, f64, ()> {
+	fn digits(input: &str) -> PResult<&str, &str, ()> {
+		let (out, rest) = digits1(10).parse(input)?;
+
+		// multi-character digits cannot start with a zero
+		if out.starts_with('0') && out.len() > 1 {
+			return Err(());
+		}
+
+		Ok((out, rest))
+	}
+
+	let integer = (optional('-'), digits);
+	let fraction = optional((('.'), digits));
+	let sign = choice(('+', '-', ""));
+	let exponent = optional((anycase("e"), sign, digits));
+
+	let (number, rest) = consume((integer, fraction, exponent))
+		.map_out(|s| f64::from_str(s))
+		.parse(input)?;
+
+	Ok((number.map_err(|_| ())?, rest))
 }
 
 fn object(input: &str) -> PResult<&str, HashMap<String, Value>, ()> {
@@ -84,9 +110,10 @@ fn value(input: &str) -> PResult<&str, Value, ()> {
 	delimited(
 		whitespace,
 		choice((
-			string.map_out(Value::String),
 			object.map_out(Value::Object),
 			array.map_out(Value::Array),
+			string.map_out(Value::String),
+			number.map_out(Value::Number),
 			"true".value(Value::Bool(true)),
 			"false".value(Value::Bool(false)),
 			"null".value(Value::Null),
@@ -96,8 +123,8 @@ fn value(input: &str) -> PResult<&str, Value, ()> {
 	.parse(input)
 }
 
-fn parser(input: &str) -> PResult<&str, Value, ()> {
-	value.before(eof()).parse(input)
+fn parse(input: &str) -> Result<Value, ()> {
+	value.before(eof).parse(input).map(|(output, _)| output)
 }
 
 fn main() {
@@ -107,6 +134,12 @@ fn main() {
         "title": true,
 	"GlossDiv": {
 	    "title": "S",
+	    "number": 100,
+	    "another": 100.1,
+	    "another2": 0.1,
+	    "another3": 0.1e+10,
+	    "another4": 1e+10,
+	    "another5": -2E-10,
 	    "GlossList": {
 		"GlossEntry": {
 		    "ID": "SGML",
@@ -128,6 +161,6 @@ fn main() {
 	let s = std::hint::black_box(s);
 
 	for _ in 0..10_000 {
-		let _ = parser(s);
+		let _ = parse(s);
 	}
 }
