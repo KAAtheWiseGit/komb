@@ -533,11 +533,11 @@ pub fn digits1<'a>(radix: u32) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 }
 
 macro_rules! impl_parse_uint {
-	($name:ident, $type:ty) => {
-		#[doc=concat!("Parses a decimal ", stringify!($type), ".")]
+	($type:ident) => {
+		#[doc=concat!("Parses a decimal [`", stringify!($type), "`][prim@", stringify!($type), "].")]
 		///
 		/// Plus or minus signs aren't accepted.
-		pub fn $name(input: &str) -> PResult<&str, $type, Error> {
+		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
 			let (s, rest) = digits1(10).parse(input)?;
 			let out = s.parse().map_err(|error| {
 				Error::ParseInt { error, span: s }
@@ -548,11 +548,33 @@ macro_rules! impl_parse_uint {
 	};
 }
 
-impl_parse_uint!(u8, u8);
-impl_parse_uint!(u16, u16);
-impl_parse_uint!(u32, u32);
-impl_parse_uint!(u64, u64);
-impl_parse_uint!(usize, usize);
+impl_parse_uint!(u8);
+impl_parse_uint!(u16);
+impl_parse_uint!(u32);
+impl_parse_uint!(u64);
+impl_parse_uint!(usize);
+
+macro_rules! impl_parse_sint {
+	($type:ident) => {
+		#[doc=concat!("Parses a decimal [`", stringify!($type), "`][prim@", stringify!($type), "].")]
+		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
+			let sign = ('+', '-', "");
+			let (s, rest) =
+				consume((sign, digits1(10))).parse(input)?;
+			let out = s.parse().map_err(|error| {
+				Error::ParseInt { error, span: s }
+			})?;
+
+			Ok((out, rest))
+		}
+	};
+}
+
+impl_parse_sint!(i8);
+impl_parse_sint!(i16);
+impl_parse_sint!(i32);
+impl_parse_sint!(i64);
+impl_parse_sint!(isize);
 
 #[cfg(test)]
 mod test {
