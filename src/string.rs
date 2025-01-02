@@ -2,7 +2,7 @@
 //!
 //! All of the parsers return [`Error`] for easier compositon.
 
-use core::num::ParseIntError;
+use core::num::{ParseFloatError, ParseIntError};
 
 use crate::{combinator::choice, PResult, Parser};
 
@@ -25,9 +25,17 @@ pub enum Error<'a> {
 	NotEnd,
 	/// Failed to parse an integer.
 	ParseInt {
-		/// The error returned by the integer `from_str` and `from_str_radix` methods.
+		/// The error returned by the integer `from_str` and
+		/// `from_str_radix` methods.
 		error: ParseIntError,
-		/// The integer substring which was parsed.
+		/// The input substring which was parsed.
+		span: &'a str,
+	},
+	/// Failed to parse a floating point number.
+	ParseFloat {
+		/// The error returned by `from_str`.
+		error: ParseFloatError,
+		/// The input substring which was parsed.
 		span: &'a str,
 	},
 }
@@ -48,7 +56,13 @@ impl fmt::Display for Error<'_> {
 			Error::NotEnd => f.write_str("Input not empty")?,
 			Error::ParseInt { error, span } => {
 				f.write_fmt(format_args!(
-					"Failed to parse '{span}'"
+					"Failed to parse integer '{span}': "
+				))?;
+				error.fmt(f)?;
+			}
+			Error::ParseFloat { error, span } => {
+				f.write_fmt(format_args!(
+					"Failed to parse float '{span}': "
 				))?;
 				error.fmt(f)?;
 			}
