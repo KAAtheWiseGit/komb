@@ -6,11 +6,12 @@ use crate::{combinator::choice, PResult, Parser};
 
 /// TODO: docs
 #[derive(Debug, PartialEq, Eq)]
-pub enum Error {
+pub enum Error<'a> {
 	/// The parser unexpectedly reached the end of the input.
 	End {
-		/// Pointer to the end of the input string.
-		ptr: *const u8,
+		/// A zero-width slice which points to the end of the input
+		/// string.
+		ptr: &'a str,
 	},
 	/// TODO: replace with concrete errors with locations.
 	Unit,
@@ -18,7 +19,7 @@ pub enum Error {
 
 use core::fmt;
 
-impl fmt::Display for Error {
+impl fmt::Display for Error<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Error::End { .. } => {
@@ -31,24 +32,12 @@ impl fmt::Display for Error {
 	}
 }
 
-impl core::error::Error for Error {}
+impl core::error::Error for Error<'_> {}
 
-impl Error {
+impl Error<'_> {
 	/// Creates a new `End` error which points to the end of `input`.
 	pub fn end(input: &str) -> Error {
-		let start = input.as_ptr();
-
-		// SAFETY:
-		//
-		// - The type of the pointer is `u8` and the end of a string is
-		//   a valid memory location, the length must be less than
-		//   `isize`.
-		//
-		// - `ptr` will point to the end of the allocated string.  And
-		//   the entire memory range between the start and the end of
-		//   the string belongs to that same string.
-		let ptr = unsafe { start.add(input.len()) };
-
+		let ptr = &input[input.len()..input.len()];
 		Error::End { ptr }
 	}
 }
@@ -71,8 +60,11 @@ pub fn consume<'a, O, E>(
 	}
 }
 
-impl<'a> Parser<'a, &'a str, &'a str, Error> for &str {
-	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, Error> {
+impl<'a> Parser<'a, &'a str, &'a str, Error<'a>> for &str {
+	fn parse(
+		&self,
+		input: &'a str,
+	) -> PResult<&'a str, &'a str, Error<'a>> {
 		if input.starts_with(self) {
 			let length = self.len();
 			Ok((&input[..length], &input[length..]))
@@ -84,8 +76,11 @@ impl<'a> Parser<'a, &'a str, &'a str, Error> for &str {
 	}
 }
 
-impl<'a> Parser<'a, &'a str, &'a str, Error> for char {
-	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, Error> {
+impl<'a> Parser<'a, &'a str, &'a str, Error<'a>> for char {
+	fn parse(
+		&self,
+		input: &'a str,
+	) -> PResult<&'a str, &'a str, Error<'a>> {
 		let needle = *self;
 		char(move |ch| ch == needle).parse(input)
 	}
@@ -107,7 +102,7 @@ impl<'a> Parser<'a, &'a str, &'a str, Error> for char {
 /// ```
 pub fn anycase<'a>(
 	literal: &'static str,
-) -> impl Parser<'a, &'a str, &'a str, Error> {
+) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	move |input: &'a str| {
 		let length = literal.len();
 
@@ -188,7 +183,7 @@ pub fn eof(input: &str) -> PResult<&str, (), Error> {
 
 /// Takes exactly `length` characters (not bytes) from the input.  Returns
 /// [`Error::End`] if the string isn't long enough.
-pub fn take<'a>(length: usize) -> impl Parser<'a, &'a str, &'a str, Error> {
+pub fn take<'a>(length: usize) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	move |input: &'a str| {
 		let mut current_length = 0;
 		for (i, ch) in input.char_indices() {
@@ -231,7 +226,7 @@ macro_rules! doc1to0 {
 /// ```
 ///
 #[doc=concat!(doc0to1!(), "[`", "take_while1", "`]")]
-pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
+pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -251,7 +246,7 @@ where
 /// Matches a prefix until the first character which satisfies the predicate.
 ///
 #[doc=concat!(doc0to1!(), "[`", "take_until1", "`]")]
-pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
+pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -263,7 +258,7 @@ where
 #[doc=concat!(doc0to1!(), "[`", "one_of1", "`]")]
 pub fn one_of0<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error> {
+) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	take_while0(move |c| chars.contains(&c))
 }
 
@@ -272,7 +267,7 @@ pub fn one_of0<'a, 'c: 'a>(
 #[doc=concat!(doc0to1!(), "[`", "none_of1", "`]")]
 pub fn none_of0<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error> {
+) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	take_until0(move |c| chars.contains(&c))
 }
 
@@ -326,7 +321,7 @@ pub fn alphanumeric0(input: &str) -> PResult<&str, &str, Error> {
 /// ```
 ///
 #[doc=concat!(doc1to0!(), "[`", "take_while0", "`]")]
-pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
+pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -357,7 +352,7 @@ where
 /// Matches a prefix until the first character which satisfies the predicate.
 ///
 #[doc=concat!(doc1to0!(), "[`", "take_until0", "`]")]
-pub fn take_until1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
+pub fn take_until1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -369,7 +364,7 @@ where
 #[doc=concat!(doc1to0!(), "[`", "one_of0", "`]")]
 pub fn one_of1<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error> {
+) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	take_while1(move |c| chars.contains(&c))
 }
 
@@ -378,7 +373,7 @@ pub fn one_of1<'a, 'c: 'a>(
 #[doc=concat!(doc1to0!(), "[`", "none_of0", "`]")]
 pub fn none_of1<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error> {
+) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	take_until1(move |c| chars.contains(&c))
 }
 
@@ -437,7 +432,7 @@ pub fn alphabetic1(input: &str) -> PResult<&str, &str, Error> {
 /// assert_eq!(Ok(("a", "1")), p.parse("a1"));
 /// assert!(p.parse("x").is_err());
 /// ```
-pub fn char<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
+pub fn char<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -464,14 +459,14 @@ pub fn any_char(input: &str) -> PResult<&str, &str, Error> {
 /// Returns the first input char if it's one of `chars`.
 pub fn one_of_char<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error> {
+) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	char(|ch| chars.contains(&ch))
 }
 
 /// Returns the first input char if it's *not* one of `chars`.
 pub fn none_of_char<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error> {
+) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	char(|ch| !chars.contains(&ch))
 }
 
@@ -486,7 +481,7 @@ pub fn none_of_char<'a, 'c: 'a>(
 ///
 /// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
 /// ```
-pub fn digits1<'a>(radix: u32) -> impl Parser<'a, &'a str, &'a str, Error> {
+pub fn digits1<'a>(radix: u32) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	take_while1(move |c| c.is_digit(radix))
 }
 
@@ -496,7 +491,7 @@ macro_rules! impl_parse_uint {
 		///
 		/// Plus or minus signs aren't accepted.
 		pub fn $name<'a>(
-		) -> impl Parser<'a, &'a str, ($type, &'a str), Error> {
+		) -> impl Parser<'a, &'a str, ($type, &'a str), Error<'a>> {
 			|input: &'a str| {
 				let (s, rest) = digits1(10)
 					.parse(input)
