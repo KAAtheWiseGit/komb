@@ -9,8 +9,6 @@ impl<'a> Parser<'a, &'a str, &'a str, ()> for &str {
 		if input.starts_with(self) {
 			let length = self.len();
 			Ok((&input[..length], &input[length..]))
-		} else if input.is_empty() {
-			Err(())
 		} else {
 			Err(())
 		}
@@ -78,8 +76,8 @@ pub fn anycase<'a>(
 ///
 /// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
 /// ```
-pub fn line_end<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	choice(("\n", "\r\n"))
+pub fn line_end(input: &str) -> PResult<&str, &str, ()> {
+	choice(("\n", "\r\n")).parse(input)
 }
 
 /// Matches a single `\n`-terminated line.
@@ -97,8 +95,8 @@ pub fn line_end<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// // No newline at the end
 /// assert!(line().parse("Hello there").is_err());
 /// ```
-pub fn line<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	none_of0(&['\n']).before(line_end())
+pub fn line(input: &str) -> PResult<&str, &str, ()> {
+	none_of0(&['\n']).before(line_end).parse(input)
 }
 
 /// Succeeds if the input is empty.
@@ -111,13 +109,11 @@ pub fn line<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
 /// assert!(p.parse("Hello world and then some").is_err());
 /// ```
-pub fn eof<'a>() -> impl Parser<'a, &'a str, (), ()> {
-	move |input: &'a str| {
-		if input.is_empty() {
-			Ok(((), input))
-		} else {
-			Err(())
-		}
+pub fn eof(input: &str) -> PResult<&str, (), ()> {
+	if input.is_empty() {
+		Ok(((), input))
+	} else {
+		Err(())
 	}
 }
 
@@ -216,8 +212,8 @@ pub fn none_of0<'a, 'c: 'a>(
 /// Uses [`char::is_whitespace`].
 ///
 #[doc=concat!(doc0to1!(), "[`", "whitespace1", "`]")]
-pub fn whitespace0<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	take_while0(|c| c.is_whitespace())
+pub fn whitespace0(input: &str) -> PResult<&str, &str, ()> {
+	take_while0(|c| c.is_whitespace()).parse(input)
 }
 
 /// Matches alphabetic characters.
@@ -225,8 +221,8 @@ pub fn whitespace0<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// Uses [`char::is_alphabetic`].
 ///
 #[doc=concat!(doc0to1!(), "[`", "alphabetic0", "`]")]
-pub fn alphabetic0<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	take_while0(|c| c.is_alphabetic())
+pub fn alphabetic0(input: &str) -> PResult<&str, &str, ()> {
+	take_while0(|c| c.is_alphabetic()).parse(input)
 }
 
 /// Matches alphanumeric characters.
@@ -243,8 +239,8 @@ pub fn alphabetic0<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// ```
 ///
 #[doc=concat!(doc0to1!(), "[`", "alphanumeric1", "`]")]
-pub fn alphanumeric0<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	take_while0(|c| c.is_alphanumeric())
+pub fn alphanumeric0(input: &str) -> PResult<&str, &str, ()> {
+	take_while0(|c| c.is_alphanumeric()).parse(input)
 }
 
 /// Cuts off a prefix of a string for whose characters the predicate `f` returns
@@ -321,8 +317,8 @@ pub fn none_of1<'a, 'c: 'a>(
 /// Uses [`char::is_whitespace`].
 ///
 #[doc=concat!(doc1to0!(), "[`", "whitespace0", "`]")]
-pub fn whitespace1<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	take_while1(|c| c.is_whitespace())
+pub fn whitespace1(input: &str) -> PResult<&str, &str, ()> {
+	take_while1(|c| c.is_whitespace()).parse(input)
 }
 
 /// Matches alphabetic characters.
@@ -330,8 +326,8 @@ pub fn whitespace1<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// Uses [`char::is_alphabetic`].
 ///
 #[doc=concat!(doc1to0!(), "[`", "alphabetic1", "`]")]
-pub fn alphanumeric1<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	take_while1(|c| c.is_alphanumeric())
+pub fn alphanumeric1(input: &str) -> PResult<&str, &str, ()> {
+	take_while1(|c| c.is_alphanumeric()).parse(input)
 }
 
 /// Matches alphanumeric characters.
@@ -348,8 +344,8 @@ pub fn alphanumeric1<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
 /// ```
 ///
 #[doc=concat!(doc1to0!(), "[`", "alphanumeric1", "`]")]
-pub fn alphabetic1<'a>() -> impl Parser<'a, &'a str, &'a str, ()> {
-	take_while1(|c| c.is_alphabetic())
+pub fn alphabetic1(input: &str) -> PResult<&str, &str, ()> {
+	take_while1(|c| c.is_alphabetic()).parse(input)
 }
 
 // Character combinators
@@ -386,8 +382,8 @@ where
 
 /// Returns whatever char is first in input.  It can return [`Error::End`]
 /// if the input is empty.
-pub fn any_char<'a>() -> impl Parser<'a, &'a str, char, ()> {
-	char(|_| true)
+pub fn any_char(input: &str) -> PResult<&str, char, ()> {
+	char(|_| true).parse(input)
 }
 
 /// Returns the first input char if it's one of `chars`.
