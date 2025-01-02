@@ -33,8 +33,8 @@ impl<'a> Parser<'a, &'a str, &'a str, ()> for &str {
 	}
 }
 
-impl<'a> Parser<'a, &'a str, char, ()> for char {
-	fn parse(&self, input: &'a str) -> PResult<&'a str, char, ()> {
+impl<'a> Parser<'a, &'a str, &'a str, ()> for char {
+	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, ()> {
 		let needle = *self;
 		char(move |ch| ch == needle).parse(input)
 	}
@@ -381,7 +381,7 @@ pub fn alphabetic1(input: &str) -> PResult<&str, &str, ()> {
 /// assert_eq!(Ok(('a', "1")), p.parse("a1"));
 /// assert!(p.parse("x").is_err());
 /// ```
-pub fn char<'a, F>(f: F) -> impl Parser<'a, &'a str, char, ()>
+pub fn char<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, ()>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -391,7 +391,8 @@ where
 		};
 
 		if f(ch) {
-			Ok((ch, &input[ch.len_utf8()..]))
+			let lenght = ch.len_utf8();
+			Ok((&input[..lenght], &input[lenght..]))
 		} else {
 			Err(())
 		}
@@ -400,21 +401,21 @@ where
 
 /// Returns whatever char is first in input.  It can return [`Error::End`]
 /// if the input is empty.
-pub fn any_char(input: &str) -> PResult<&str, char, ()> {
+pub fn any_char(input: &str) -> PResult<&str, &str, ()> {
 	char(|_| true).parse(input)
 }
 
 /// Returns the first input char if it's one of `chars`.
 pub fn one_of_char<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, char, ()> {
+) -> impl Parser<'a, &'a str, &'a str, ()> {
 	char(|ch| chars.contains(&ch))
 }
 
 /// Returns the first input char if it's *not* one of `chars`.
 pub fn none_of_char<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, char, ()> {
+) -> impl Parser<'a, &'a str, &'a str, ()> {
 	char(|ch| !chars.contains(&ch))
 }
 
