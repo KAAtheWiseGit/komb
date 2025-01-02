@@ -551,11 +551,11 @@ macro_rules! impl_parse_uint {
 	};
 }
 
-impl_parse_uint!(parse_u8, u8);
-impl_parse_uint!(parse_u16, u16);
-impl_parse_uint!(parse_u32, u32);
-impl_parse_uint!(parse_u64, u64);
-impl_parse_uint!(parse_usize, usize);
+impl_parse_uint!(u8, u8);
+impl_parse_uint!(u16, u16);
+impl_parse_uint!(u32, u32);
+impl_parse_uint!(u64, u64);
+impl_parse_uint!(usize, usize);
 
 #[cfg(test)]
 mod test {
