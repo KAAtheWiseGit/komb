@@ -12,7 +12,7 @@ use komb::{
 	PResult, Parser,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Value {
 	Null,
 	Bool(bool),
@@ -140,47 +140,43 @@ fn parse(input: &str) -> Result<Value, Error> {
 	value.before(eof).parse(input).map(|(output, _)| output)
 }
 
-fn main() {
-	let _s = r#"
-{
-    "glossary": {
-        "title": true,
-	"GlossDiv": {
-	    "title": "S",
-	    "number": 100,
-	    "another": 100.1,
-	    "another2": 0.1,
-	    "another3": 0.1e+10,
-	    "another4": 1e+10,
-	    "another5": -2E-10,
-	    "GlossList": {
-		"GlossEntry": {
-		    "ID": "SGML",
-		    "SortAs": "SGML",
-		    "GlossTerm": "Standard Generalized Markup Language",
-		    "Acronym": "SGML",
-		    "Abbrev": "ISO 8879:1986",
-		    "GlossDef": {
-			"para": "A meta-markup language, used to create markup languages such as DocBook.",
-			"GlossSeeAlso": ["GML", "XML"]
-		    },
-		    "GlossSee": "markup"
-		}
-	    }
-	}
-    }
-}"#;
-
+fn load(file: &str) -> String {
 	use std::fs::File;
 	use std::io::Read;
-	let mut f =
-		File::open("/home/kaathewise/download/canada.json").unwrap();
-	let mut s = String::new();
-	f.read_to_string(&mut s).unwrap();
 
-	let s = std::hint::black_box(&s);
+	let mut f = File::open(file)
+		.expect(&format!("Failed to open the file '{file}'"));
+	let mut out = String::new();
+	f.read_to_string(&mut out)
+		.expect("Failed to read the file contents");
+	out
+}
 
-	for _ in 0..100 {
-		let _ = parse(s).unwrap();
-	}
+fn main() {
+	use std::env::args;
+
+	let Some(file) = args().skip(1).next() else {
+		eprintln!("Pass a UTF-8 path to a JSON file");
+		return;
+	};
+	let json = load(&file);
+	let value = parse(&json);
+
+	println!("{:#?}", value);
+}
+
+#[test]
+fn test() {
+	let basic = parse(r#"["hello", "world"]"#);
+	assert_eq!(
+		Ok(Value::Array(vec![
+			Value::String("hello".to_owned()),
+			Value::String("world".to_owned())
+		])),
+		basic
+	);
+
+	assert!(parse(&load("data/widget.json")).is_ok());
+	assert!(parse(&load("data/glossary.json")).is_ok());
+	assert!(parse(&load("data/webapp.json")).is_ok());
 }
