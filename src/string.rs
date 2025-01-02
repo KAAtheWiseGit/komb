@@ -4,6 +4,24 @@
 
 use crate::{combinator::choice, PResult, Parser};
 
+/// Returns the prefix which the inner parser consumed as output.
+pub fn consume<'a, O, E>(
+	parser: impl Parser<'a, &'a str, O, E>,
+) -> impl Parser<'a, &'a str, &'a str, E> {
+	move |input: &'a str| {
+		let (_, rest) = parser.parse(input)?;
+
+		let start = input.as_ptr() as usize;
+		let end = rest.as_ptr() as usize;
+
+		assert!(start < end);
+		let length = end - start;
+		assert!(length < input.len());
+
+		Ok((&input[..length], &input[length..]))
+	}
+}
+
 impl<'a> Parser<'a, &'a str, &'a str, ()> for &str {
 	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, ()> {
 		if input.starts_with(self) {
