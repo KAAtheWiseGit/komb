@@ -1,8 +1,6 @@
 // TODO: examples
 #![doc = include_str!("../README.md")]
 #![no_std]
-#![allow(missing_docs)]
-#![allow(dead_code)]
 extern crate alloc;
 
 pub mod combinator;
