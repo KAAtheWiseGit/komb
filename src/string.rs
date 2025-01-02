@@ -67,8 +67,9 @@ impl Error<'_> {
 		Error::End { span: ptr }
 	}
 
-	fn unmatched(literal: &str) -> Error {
-		Error::Unmatched { span: literal }
+	/// Creates a new `Unmatched` error with a given span.
+	pub fn unmatched(span: &str) -> Error {
+		Error::Unmatched { span }
 	}
 }
 
