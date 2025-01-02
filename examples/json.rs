@@ -1,5 +1,4 @@
 #![allow(missing_docs)]
-#![allow(dead_code)]
 
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -29,12 +28,9 @@ fn whitespace(input: &str) -> PResult<&str, (), Error> {
 
 fn string(input: &str) -> PResult<&str, String, Error> {
 	let u_esc = "\\u".and_then(take(4).map(|v| {
-		let s = match v {
-			Ok(s) => s.to_ascii_lowercase(),
-			Err(_) => return Err(Error::Unit),
-		};
-		let num =
-			u32::from_str_radix(&s, 16).map_err(|_| Error::Unit)?;
+		let s = v?;
+		let num = u32::from_str_radix(s, 16)
+			.map_err(|error| Error::ParseInt { error, span: s })?;
 		Ok(char::from_u32(num).unwrap())
 	}));
 
@@ -69,7 +65,7 @@ fn number(input: &str) -> PResult<&str, f64, Error> {
 
 		// multi-character digits cannot start with a zero
 		if out.starts_with('0') && out.len() > 1 {
-			return Err(Error::Unit);
+			return Err(Error::unmatched(out));
 		}
 
 		Ok((out, rest))
@@ -80,11 +76,16 @@ fn number(input: &str) -> PResult<&str, f64, Error> {
 	let sign = choice(('+', '-', ""));
 	let exponent = optional((anycase("e"), sign, digits));
 
-	let (number, rest) = consume((integer, fraction, exponent))
-		.map_out(f64::from_str)
-		.parse(input)?;
+	let (number_s, rest) =
+		consume((integer, fraction, exponent)).parse(input)?;
 
-	Ok((number.map_err(|_| Error::Unit)?, rest))
+	let number =
+		f64::from_str(number_s).map_err(|error| Error::ParseFloat {
+			error,
+			span: number_s,
+		})?;
+
+	Ok((number, rest))
 }
 
 fn object(input: &str) -> PResult<&str, HashMap<String, Value>, Error> {
