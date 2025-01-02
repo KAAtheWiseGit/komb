@@ -519,17 +519,34 @@ pub fn none_of_char<'a, 'c: 'a>(
 
 /// Matches digits in a radix.
 ///
-/// The behaviour is the as that of [`char::is_digit`].
+/// Uses [`char::is_digit`] underneath.
 ///
 /// ```rust
 /// use komb::{Parser, string::digits1};
 ///
-/// let p = digits1(16);
+/// let p = digits1::<16>;
 ///
 /// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
+/// assert!(p.parse("").is_err());
 /// ```
 pub fn digits1<const R: u32>(input: &str) -> PResult<&str, &str, Error> {
 	take_while1(move |c| c.is_digit(R)).parse(input)
+}
+
+/// Matches digits in a radix.
+///
+/// Uses [`char::is_digit`] underneath.
+///
+/// ```rust
+/// use komb::{Parser, string::digits0};
+///
+/// let p = digits0::<16>;
+///
+/// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
+/// assert_eq!(Ok(("", "")), p.parse(""));
+/// ```
+pub fn digits0<const R: u32>(input: &str) -> PResult<&str, &str, Error> {
+	take_while0(move |c| c.is_digit(R)).parse(input)
 }
 
 macro_rules! impl_parse_uint {
