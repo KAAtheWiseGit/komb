@@ -1,6 +1,6 @@
 //! Concrete parsers which operate on `str` input.
 //!
-//! All of the parsers return [`StringError`] for easier compositon.
+//! All of the parsers return [`Error`] for easier compositon.
 
 use crate::{combinator::choice, PResult, Parser};
 
@@ -12,7 +12,7 @@ pub enum Error {
 		/// Pointer to the end of the input string.
 		ptr: *const u8,
 	},
-	/// TODO: replace
+	/// TODO: replace with concrete errors with locations.
 	Unit,
 }
 
