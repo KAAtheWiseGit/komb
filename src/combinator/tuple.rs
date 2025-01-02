@@ -49,17 +49,17 @@ impl_tuple!(P0 O0 0, P1 O1 1, P2 O2 2, P3 O3 3, P4 O4 4, P5 O5 5, P6 O6 6, P7 O7
 #[cfg(test)]
 mod test {
 	use super::*;
-	use crate::string::{any_char, literal};
+	use crate::string::any_char;
 
 	#[test]
 	fn basic() {
-		let p = tuple((literal("a"), literal("b"), literal("c")));
+		let p = ("a", "b", "c");
 		assert_eq!(Ok((("a", "b", "c"), " rest")), p.parse("abc rest"));
 	}
 
 	#[test]
 	fn types() {
-		let p = (literal("a"), any_char(), literal("c"));
-		assert_eq!(Ok((("a", 'b', "c"), " rest")), p.parse("abc rest"));
+		let p = ("a", any_char, "c");
+		assert_eq!(Ok((("a", "b", "c"), " rest")), p.parse("abc rest"));
 	}
 }
