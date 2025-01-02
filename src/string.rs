@@ -593,6 +593,71 @@ impl_parse_sint!(i32);
 impl_parse_sint!(i64);
 impl_parse_sint!(isize);
 
+macro_rules! impl_parse_float {
+	($type:ident) => {
+		#[doc=concat!("Parses a [`", stringify!($type), "`][prim@", stringify!($type), "].")]
+		///
+		/// This function uses Rust-style grammar.  See
+		/// [`from_str`][prim@f64#method.from_str] for the description.
+		///
+		/// ```rust
+		/// use komb::Parser;
+		#[doc=concat!("use komb::string::", stringify!($type), ";")]
+		///
+		#[doc=concat!("assert_eq!(Ok((3.14, \"\")), ", stringify!($type), ".parse(\"3.14\"));")]
+		#[doc=concat!("assert_eq!(Ok((-3.14, \"\")), ", stringify!($type), ".parse(\"-3.14\"));")]
+		#[doc=concat!("assert_eq!(Ok((2.5E10, \"\")), ", stringify!($type), ".parse(\"2.5E10\"));")]
+		#[doc=concat!("assert_eq!(Ok((2.5E-10, \"\")), ", stringify!($type), ".parse(\"2.5E-10\"));")]
+		#[doc=concat!("assert_eq!(Ok((5.0, \"\")), ", stringify!($type), ".parse(\"5.\"));")]
+		#[doc=concat!("assert_eq!(Ok((0.5, \"\")), ", stringify!($type), ".parse(\".5\"));")]
+		#[doc=concat!("assert_eq!(Ok((", stringify!($type), "::INFINITY, \"\")), ", stringify!($type), ".parse(\"iNf\"));")]
+		#[doc=concat!("assert_eq!(Ok((", stringify!($type), "::NEG_INFINITY, \"\")), ", stringify!($type), ".parse(\"-inF\"));")]
+		/// ```
+		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
+			use crate::combinator::optional;
+
+			fn sign(input: &str) -> PResult<&str, (), Error> {
+				optional(choice(('+', '-', "")))
+					.value(())
+					.parse(input)
+			}
+			let exp = (anycase("e"), sign, digits1::<10>);
+			let number = (
+				choice((
+					(digits1::<10>, '.', digits0::<10>)
+						.value(()),
+					(digits0::<10>, '.', digits1::<10>)
+						.value(()),
+					digits1::<10>.value(()),
+				)),
+				optional(exp),
+			);
+			let float = (
+				sign,
+				choice((
+					anycase("inf").value(()),
+					anycase("infinity").value(()),
+					anycase("nan").value(()),
+					number.value(()),
+				)),
+			);
+			let s = consume(float);
+
+			let (span, rest) = s.parse(input)?;
+
+			use core::str::FromStr;
+			let out = $type::from_str(span).map_err(|error| {
+				Error::ParseFloat { error, span }
+			})?;
+
+			Ok((out, rest))
+		}
+	};
+}
+
+impl_parse_float!(f32);
+impl_parse_float!(f64);
+
 #[cfg(test)]
 mod test {
 	use super::*;
