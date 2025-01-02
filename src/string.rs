@@ -528,8 +528,8 @@ pub fn none_of_char<'a, 'c: 'a>(
 ///
 /// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
 /// ```
-pub fn digits1<'a>(radix: u32) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
-	take_while1(move |c| c.is_digit(radix))
+pub fn digits1<const R: u32>(input: &str) -> PResult<&str, &str, Error> {
+	take_while1(move |c| c.is_digit(R)).parse(input)
 }
 
 macro_rules! impl_parse_uint {
@@ -538,7 +538,7 @@ macro_rules! impl_parse_uint {
 		///
 		/// Plus or minus signs aren't accepted.
 		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
-			let (s, rest) = digits1(10).parse(input)?;
+			let (s, rest) = digits1::<10>.parse(input)?;
 			let out = s.parse().map_err(|error| {
 				Error::ParseInt { error, span: s }
 			})?;
@@ -560,7 +560,7 @@ macro_rules! impl_parse_sint {
 		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
 			let sign = ('+', '-', "");
 			let (s, rest) =
-				consume((sign, digits1(10))).parse(input)?;
+				consume((sign, digits1::<10>)).parse(input)?;
 			let out = s.parse().map_err(|error| {
 				Error::ParseInt { error, span: s }
 			})?;

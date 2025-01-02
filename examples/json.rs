@@ -55,7 +55,7 @@ fn string(input: &str) -> PResult<&str, String, Error> {
 
 fn number(input: &str) -> PResult<&str, f64, Error> {
 	fn digits(input: &str) -> PResult<&str, &str, Error> {
-		let (out, rest) = digits1(10).parse(input)?;
+		let (out, rest) = digits1::<10>.parse(input)?;
 
 		Ok((out, rest))
 	}
