@@ -4,6 +4,38 @@
 
 use crate::{combinator::choice, PResult, Parser};
 
+/// TODO: docs
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+	/// The parser unexpectedly reached the end of the input.
+	End {
+		/// Pointer to the end of the input string.
+		ptr: *const u8,
+	},
+	/// TODO: replace
+	Unit,
+}
+
+impl Error {
+	/// Creates a new `End` error which points to the end of `input`.
+	pub fn end(input: &str) -> Error {
+		let start = input.as_ptr();
+
+		// SAFETY:
+		//
+		// - The type of the pointer is `u8` and the end of a string is
+		//   a valid memory location, the length must be less than
+		//   `isize`.
+		//
+		// - `ptr` will point to the end of the allocated string.  And
+		//   the entire memory range between the start and the end of
+		//   the string belongs to that same string.
+		let ptr = unsafe { start.add(input.len()) };
+
+		Error::End { ptr }
+	}
+}
+
 /// Returns the prefix which the inner parser consumed as output.
 pub fn consume<'a, O, E>(
 	parser: impl Parser<'a, &'a str, O, E>,
@@ -22,19 +54,21 @@ pub fn consume<'a, O, E>(
 	}
 }
 
-impl<'a> Parser<'a, &'a str, &'a str, ()> for &str {
-	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, ()> {
+impl<'a> Parser<'a, &'a str, &'a str, Error> for &str {
+	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, Error> {
 		if input.starts_with(self) {
 			let length = self.len();
 			Ok((&input[..length], &input[length..]))
+		} else if input.len() < self.len() {
+			Err(Error::end(input))
 		} else {
-			Err(())
+			Err(Error::Unit)
 		}
 	}
 }
 
-impl<'a> Parser<'a, &'a str, &'a str, ()> for char {
-	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, ()> {
+impl<'a> Parser<'a, &'a str, &'a str, Error> for char {
+	fn parse(&self, input: &'a str) -> PResult<&'a str, &'a str, Error> {
 		let needle = *self;
 		char(move |ch| ch == needle).parse(input)
 	}
@@ -56,7 +90,7 @@ impl<'a> Parser<'a, &'a str, &'a str, ()> for char {
 /// ```
 pub fn anycase<'a>(
 	literal: &'static str,
-) -> impl Parser<'a, &'a str, &'a str, ()> {
+) -> impl Parser<'a, &'a str, &'a str, Error> {
 	move |input: &'a str| {
 		let length = literal.len();
 
@@ -72,13 +106,13 @@ pub fn anycase<'a>(
 			};
 
 			let Some(input_ch) = input_chars.next() else {
-				return Err(());
+				return Err(Error::end(input));
 			};
 
 			if lit_ch.to_ascii_lowercase()
 				!= input_ch.to_ascii_lowercase()
 			{
-				return Err(());
+				return Err(Error::Unit);
 			}
 		}
 	}
@@ -94,7 +128,7 @@ pub fn anycase<'a>(
 ///
 /// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
 /// ```
-pub fn line_end(input: &str) -> PResult<&str, &str, ()> {
+pub fn line_end(input: &str) -> PResult<&str, &str, Error> {
 	choice(("\n", "\r\n")).parse(input)
 }
 
@@ -113,7 +147,7 @@ pub fn line_end(input: &str) -> PResult<&str, &str, ()> {
 /// // No newline at the end
 /// assert!(line().parse("Hello there").is_err());
 /// ```
-pub fn line(input: &str) -> PResult<&str, &str, ()> {
+pub fn line(input: &str) -> PResult<&str, &str, Error> {
 	none_of0(&['\n']).before(line_end).parse(input)
 }
 
@@ -127,17 +161,17 @@ pub fn line(input: &str) -> PResult<&str, &str, ()> {
 /// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
 /// assert!(p.parse("Hello world and then some").is_err());
 /// ```
-pub fn eof(input: &str) -> PResult<&str, (), ()> {
+pub fn eof(input: &str) -> PResult<&str, (), Error> {
 	if input.is_empty() {
 		Ok(((), input))
 	} else {
-		Err(())
+		Err(Error::Unit)
 	}
 }
 
 /// Takes exactly `length` characters (not bytes) from the input.  Returns
 /// [`Error::End`] if the string isn't long enough.
-pub fn take<'a>(length: usize) -> impl Parser<'a, &'a str, &'a str, ()> {
+pub fn take<'a>(length: usize) -> impl Parser<'a, &'a str, &'a str, Error> {
 	move |input: &'a str| {
 		let mut current_length = 0;
 		for (i, ch) in input.char_indices() {
@@ -148,7 +182,7 @@ pub fn take<'a>(length: usize) -> impl Parser<'a, &'a str, &'a str, ()> {
 			}
 		}
 
-		Err(())
+		Err(Error::end(input))
 	}
 }
 
@@ -180,7 +214,7 @@ macro_rules! doc1to0 {
 /// ```
 ///
 #[doc=concat!(doc0to1!(), "[`", "take_while1", "`]")]
-pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, ()>
+pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -200,7 +234,7 @@ where
 /// Matches a prefix until the first character which satisfies the predicate.
 ///
 #[doc=concat!(doc0to1!(), "[`", "take_until1", "`]")]
-pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, ()>
+pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -212,7 +246,7 @@ where
 #[doc=concat!(doc0to1!(), "[`", "one_of1", "`]")]
 pub fn one_of0<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, ()> {
+) -> impl Parser<'a, &'a str, &'a str, Error> {
 	take_while0(move |c| chars.contains(&c))
 }
 
@@ -221,7 +255,7 @@ pub fn one_of0<'a, 'c: 'a>(
 #[doc=concat!(doc0to1!(), "[`", "none_of1", "`]")]
 pub fn none_of0<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, ()> {
+) -> impl Parser<'a, &'a str, &'a str, Error> {
 	take_until0(move |c| chars.contains(&c))
 }
 
@@ -230,7 +264,7 @@ pub fn none_of0<'a, 'c: 'a>(
 /// Uses [`char::is_whitespace`].
 ///
 #[doc=concat!(doc0to1!(), "[`", "whitespace1", "`]")]
-pub fn whitespace0(input: &str) -> PResult<&str, &str, ()> {
+pub fn whitespace0(input: &str) -> PResult<&str, &str, Error> {
 	take_while0(|c| c.is_whitespace()).parse(input)
 }
 
@@ -239,7 +273,7 @@ pub fn whitespace0(input: &str) -> PResult<&str, &str, ()> {
 /// Uses [`char::is_alphabetic`].
 ///
 #[doc=concat!(doc0to1!(), "[`", "alphabetic0", "`]")]
-pub fn alphabetic0(input: &str) -> PResult<&str, &str, ()> {
+pub fn alphabetic0(input: &str) -> PResult<&str, &str, Error> {
 	take_while0(|c| c.is_alphabetic()).parse(input)
 }
 
@@ -257,7 +291,7 @@ pub fn alphabetic0(input: &str) -> PResult<&str, &str, ()> {
 /// ```
 ///
 #[doc=concat!(doc0to1!(), "[`", "alphanumeric1", "`]")]
-pub fn alphanumeric0(input: &str) -> PResult<&str, &str, ()> {
+pub fn alphanumeric0(input: &str) -> PResult<&str, &str, Error> {
 	take_while0(|c| c.is_alphanumeric()).parse(input)
 }
 
@@ -274,7 +308,7 @@ pub fn alphanumeric0(input: &str) -> PResult<&str, &str, ()> {
 /// ```
 ///
 #[doc=concat!(doc1to0!(), "[`", "take_while0", "`]")]
-pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, ()>
+pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -287,7 +321,7 @@ where
 				return if at_least_one {
 					Ok((&input[..i], &input[i..]))
 				} else {
-					Err(())
+					Err(Error::end(input))
 				};
 			}
 			index = i + char.len_utf8();
@@ -297,7 +331,7 @@ where
 		if at_least_one {
 			Ok((&input[..index], &input[index..]))
 		} else {
-			Err(())
+			Err(Error::end(input))
 		}
 	}
 }
@@ -305,7 +339,7 @@ where
 /// Matches a prefix until the first character which satisfies the predicate.
 ///
 #[doc=concat!(doc1to0!(), "[`", "take_until0", "`]")]
-pub fn take_until1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, ()>
+pub fn take_until1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -317,7 +351,7 @@ where
 #[doc=concat!(doc1to0!(), "[`", "one_of0", "`]")]
 pub fn one_of1<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, ()> {
+) -> impl Parser<'a, &'a str, &'a str, Error> {
 	take_while1(move |c| chars.contains(&c))
 }
 
@@ -326,7 +360,7 @@ pub fn one_of1<'a, 'c: 'a>(
 #[doc=concat!(doc1to0!(), "[`", "none_of0", "`]")]
 pub fn none_of1<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, ()> {
+) -> impl Parser<'a, &'a str, &'a str, Error> {
 	take_until1(move |c| chars.contains(&c))
 }
 
@@ -335,7 +369,7 @@ pub fn none_of1<'a, 'c: 'a>(
 /// Uses [`char::is_whitespace`].
 ///
 #[doc=concat!(doc1to0!(), "[`", "whitespace0", "`]")]
-pub fn whitespace1(input: &str) -> PResult<&str, &str, ()> {
+pub fn whitespace1(input: &str) -> PResult<&str, &str, Error> {
 	take_while1(|c| c.is_whitespace()).parse(input)
 }
 
@@ -344,7 +378,7 @@ pub fn whitespace1(input: &str) -> PResult<&str, &str, ()> {
 /// Uses [`char::is_alphabetic`].
 ///
 #[doc=concat!(doc1to0!(), "[`", "alphabetic1", "`]")]
-pub fn alphanumeric1(input: &str) -> PResult<&str, &str, ()> {
+pub fn alphanumeric1(input: &str) -> PResult<&str, &str, Error> {
 	take_while1(|c| c.is_alphanumeric()).parse(input)
 }
 
@@ -362,7 +396,7 @@ pub fn alphanumeric1(input: &str) -> PResult<&str, &str, ()> {
 /// ```
 ///
 #[doc=concat!(doc1to0!(), "[`", "alphanumeric1", "`]")]
-pub fn alphabetic1(input: &str) -> PResult<&str, &str, ()> {
+pub fn alphabetic1(input: &str) -> PResult<&str, &str, Error> {
 	take_while1(|c| c.is_alphabetic()).parse(input)
 }
 
@@ -381,41 +415,41 @@ pub fn alphabetic1(input: &str) -> PResult<&str, &str, ()> {
 /// assert_eq!(Ok(('a', "1")), p.parse("a1"));
 /// assert!(p.parse("x").is_err());
 /// ```
-pub fn char<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, ()>
+pub fn char<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>
 where
 	F: Fn(char) -> bool + 'a,
 {
 	move |input: &'a str| {
 		let Some(ch) = input.chars().next() else {
-			return Err(());
+			return Err(Error::end(input));
 		};
 
 		if f(ch) {
 			let lenght = ch.len_utf8();
 			Ok((&input[..lenght], &input[lenght..]))
 		} else {
-			Err(())
+			Err(Error::Unit)
 		}
 	}
 }
 
 /// Returns whatever char is first in input.  It can return [`Error::End`]
 /// if the input is empty.
-pub fn any_char(input: &str) -> PResult<&str, &str, ()> {
+pub fn any_char(input: &str) -> PResult<&str, &str, Error> {
 	char(|_| true).parse(input)
 }
 
 /// Returns the first input char if it's one of `chars`.
 pub fn one_of_char<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, ()> {
+) -> impl Parser<'a, &'a str, &'a str, Error> {
 	char(|ch| chars.contains(&ch))
 }
 
 /// Returns the first input char if it's *not* one of `chars`.
 pub fn none_of_char<'a, 'c: 'a>(
 	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, ()> {
+) -> impl Parser<'a, &'a str, &'a str, Error> {
 	char(|ch| !chars.contains(&ch))
 }
 
@@ -430,7 +464,7 @@ pub fn none_of_char<'a, 'c: 'a>(
 ///
 /// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
 /// ```
-pub fn digits1<'a>(radix: u32) -> impl Parser<'a, &'a str, &'a str, ()> {
+pub fn digits1<'a>(radix: u32) -> impl Parser<'a, &'a str, &'a str, Error> {
 	take_while1(move |c| c.is_digit(radix))
 }
 
@@ -440,12 +474,12 @@ macro_rules! impl_parse_uint {
 		///
 		/// Plus or minus signs aren't accepted.
 		pub fn $name<'a>(
-		) -> impl Parser<'a, &'a str, ($type, &'a str), ()> {
+		) -> impl Parser<'a, &'a str, ($type, &'a str), Error> {
 			|input: &'a str| {
 				let (s, rest) = digits1(10)
 					.parse(input)
-					.map_err(|_| ())?;
-				let out = s.parse().map_err(|_| ())?;
+					.map_err(|_| Error::Unit)?;
+				let out = s.parse().map_err(|_| Error::Unit)?;
 
 				Ok(((out, s), rest))
 			}
