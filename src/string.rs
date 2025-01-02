@@ -141,7 +141,7 @@ pub fn anycase<'a>(
 /// ```rust
 /// use komb::{Parser, string::{line_end, alphanumeric0}};
 ///
-/// let p = alphanumeric0().before(line_end());
+/// let p = alphanumeric0.before(line_end);
 ///
 /// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
 /// ```
@@ -157,12 +157,12 @@ pub fn line_end(input: &str) -> PResult<&str, &str, Error> {
 /// ```rust
 /// use komb::{Parser, string::line};
 ///
-/// assert_eq!(Ok(("Hello", "world")), line().parse("Hello\nworld"));
-/// assert_eq!(Ok(("Hello\r", "world")), line().parse("Hello\r\nworld"));
-/// assert_eq!(Ok(("", "next line")), line().parse("\nnext line"));
-/// assert!(line().parse("").is_err());
+/// assert_eq!(Ok(("Hello", "world")), line.parse("Hello\nworld"));
+/// assert_eq!(Ok(("Hello\r", "world")), line.parse("Hello\r\nworld"));
+/// assert_eq!(Ok(("", "next line")), line.parse("\nnext line"));
+/// assert!(line.parse("").is_err());
 /// // No newline at the end
-/// assert!(line().parse("Hello there").is_err());
+/// assert!(line.parse("Hello there").is_err());
 /// ```
 pub fn line(input: &str) -> PResult<&str, &str, Error> {
 	none_of0(&['\n']).before(line_end).parse(input)
@@ -171,9 +171,9 @@ pub fn line(input: &str) -> PResult<&str, &str, Error> {
 /// Succeeds if the input is empty.
 ///
 /// ```rust
-/// use komb::{Parser, string::{eof}};
+/// use komb::{Parser, string::eof};
 ///
-/// let p = "Hello world".before(eof());
+/// let p = "Hello world".before(eof);
 ///
 /// assert_eq!(Ok(("Hello world", "")), p.parse("Hello world"));
 /// assert!(p.parse("Hello world and then some").is_err());
@@ -301,7 +301,8 @@ pub fn alphabetic0(input: &str) -> PResult<&str, &str, Error> {
 /// ```rust
 /// use komb::{Parser, string::alphanumeric0};
 ///
-/// let p = alphanumeric0();
+/// let p = alphanumeric0;
+///
 /// assert_eq!(Ok(("abc0", " rest")), p.parse("abc0 rest"));
 /// assert_eq!(Ok(("", "-_-")), p.parse("-_-"));
 /// assert_eq!(Ok(("", "")), p.parse(""));
@@ -406,7 +407,7 @@ pub fn alphanumeric1(input: &str) -> PResult<&str, &str, Error> {
 /// ```rust
 /// use komb::{Parser, string::alphabetic1};
 ///
-/// let p = alphabetic1();
+/// let p = alphabetic1;
 ///
 /// assert_eq!(Ok(("abcXYZ", " rest")), p.parse("abcXYZ rest"));
 /// assert!(p.parse("_ident").is_err());
@@ -419,17 +420,21 @@ pub fn alphabetic1(input: &str) -> PResult<&str, &str, Error> {
 
 // Character combinators
 
-/// Returns the first character in input if it satisfies the predicate.  If the
-/// predicate fails, [`Error::Unmatched`] is returned.  If the string is
+/// Returns the first character in input if it satisfies the predicate.
+///
+/// If the predicate fails, [`Error::Unit`] is returned.  If the string is
 /// empty, [`Error::End`] is returned.
+///
+/// This function returns a borrowed string slice `&str` to preserve the
+/// location of the character.
 ///
 /// ```rust
 /// use komb::{Parser, string::char};
 ///
 /// let p = char(|ch| ch == '1' || ch == 'a');
 ///
-/// assert_eq!(Ok(('1', "rest")), p.parse("1rest"));
-/// assert_eq!(Ok(('a', "1")), p.parse("a1"));
+/// assert_eq!(Ok(("1", "rest")), p.parse("1rest"));
+/// assert_eq!(Ok(("a", "1")), p.parse("a1"));
 /// assert!(p.parse("x").is_err());
 /// ```
 pub fn char<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error>

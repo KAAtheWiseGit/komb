@@ -70,7 +70,7 @@ where
 /// use komb::{Parser, combinator::delimited};
 /// use komb::string::alphabetic0;
 ///
-/// let p = delimited("(", alphabetic0(), ")");
+/// let p = delimited("(", alphabetic0, ")");
 ///
 /// assert_eq!(Ok(("word", "")), p.parse("(word)"));
 /// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
@@ -102,7 +102,7 @@ where
 /// use komb::{Parser, combinator::fold, string::any_char};
 ///
 /// let p = fold(
-///     any_char().before(","),
+///     any_char.before(","),
 ///     Vec::new(),
 ///     |v, element| {
 ///         v.push(element)
@@ -111,7 +111,7 @@ where
 ///
 /// let (output, _) = p.parse("a,b,c,d,").unwrap();
 ///
-/// assert_eq!(vec!['a', 'b', 'c', 'd'], output);
+/// assert_eq!(vec!["a", "b", "c", "d"], output);
 /// ```
 pub fn fold<'a, I, O, OX, E, F>(
 	parser: impl Parser<'a, I, O, E>,
