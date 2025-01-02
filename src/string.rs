@@ -537,16 +537,13 @@ macro_rules! impl_parse_uint {
 		#[doc=concat!("Parses a decimal ", stringify!($type), ".")]
 		///
 		/// Plus or minus signs aren't accepted.
-		pub fn $name<'a>(
-		) -> impl Parser<'a, &'a str, ($type, &'a str), Error<'a>> {
-			|input: &'a str| {
-				let (s, rest) = digits1(10).parse(input)?;
-				let out = s.parse().map_err(|error| {
-					Error::ParseInt { error, span: s }
-				})?;
+		pub fn $name(input: &str) -> PResult<&str, $type, Error> {
+			let (s, rest) = digits1(10).parse(input)?;
+			let out = s.parse().map_err(|error| {
+				Error::ParseInt { error, span: s }
+			})?;
 
-				Ok(((out, s), rest))
-			}
+			Ok((out, rest))
 		}
 	};
 }
