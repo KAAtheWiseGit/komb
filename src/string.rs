@@ -16,7 +16,7 @@ pub fn consume<'a, O, E>(
 
 		assert!(start < end);
 		let length = end - start;
-		assert!(length < input.len());
+		assert!(length <= input.len());
 
 		Ok((&input[..length], &input[length..]))
 	}
