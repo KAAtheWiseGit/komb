@@ -105,6 +105,17 @@ pub fn consume<'a, O, E>(
 	}
 }
 
+/// Returns an empty string if the underlying parser fails.
+///
+/// The string will point to the start of the input.
+pub fn or0<'a, E>(
+	parser: impl Parser<'a, &'a str, &'a str, E>,
+) -> impl Parser<'a, &'a str, &'a str, E> {
+	move |input: &'a str| {
+		Ok(parser.parse(input).unwrap_or((&input[..0], input)))
+	}
+}
+
 impl<'a> Parser<'a, &'a str, &'a str, Error<'a>> for &str {
 	fn parse(
 		&self,
@@ -181,9 +192,9 @@ pub fn anycase<'a>(
 /// reference.
 ///
 /// ```rust
-/// use komb::{Parser, string::{line_end, alphanumeric0}};
+/// use komb::{Parser, string::{line_end, alphanumeric}};
 ///
-/// let p = alphanumeric0.before(line_end);
+/// let p = alphanumeric.before(line_end);
 ///
 /// assert_eq!(Ok(("Hello", "world")), p.parse("Hello\nworld"));
 /// ```
@@ -207,7 +218,7 @@ pub fn line_end(input: &str) -> PResult<&str, &str, Error> {
 /// assert!(line.parse("Hello there").is_err());
 /// ```
 pub fn line(input: &str) -> PResult<&str, &str, Error> {
-	none_of0(&['\n']).before(line_end).parse(input)
+	or0(none_of(&['\n'])).before(line_end).parse(input)
 }
 
 /// Succeeds if the input is empty.
@@ -245,130 +256,18 @@ pub fn take<'a>(length: usize) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
 	}
 }
 
-macro_rules! doc0to1 {
-	() => {
-		"Note that this will succeed even if it matches no characters. In this case it'll return an empty string pointing to the start of input as the output.  To fail in such cases use "
-	};
-}
-
-macro_rules! doc1to0 {
-	() => {
-		"Note that this will fail if it can't match at least a single character.  To return an empty string in such cases use "
-	};
-}
-
-/// Cuts off a prefix of a string for whose characters the predicate `f` returns
-/// `true`.
-///
-/// If it hits the end of the string, the whole string will be returned and the
-/// remainder will be an empty string pointing to the end of input.
-///
-///
-/// ```rust
-/// use komb::{Parser, string::take_while0};
-///
-/// let p = take_while0(|ch| ch.is_alphanumeric());
-/// assert_eq!(Ok(("abc1", " and rest")), p.parse("abc1 and rest"));
-/// assert_eq!(Ok(("", "-_-")), p.parse("-_-"))
-/// ```
-///
-#[doc=concat!(doc0to1!(), "[`", "take_while1", "`]")]
-pub fn take_while0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
-where
-	F: Fn(char) -> bool + 'a,
-{
-	move |input: &'a str| {
-		let mut index = 0;
-		for (i, char) in input.char_indices() {
-			if !f(char) {
-				return Ok((&input[..i], &input[i..]));
-			}
-			index = i + char.len_utf8();
-		}
-
-		Ok((&input[..index], &input[index..]))
-	}
-}
-
-/// Matches a prefix until the first character which satisfies the predicate.
-///
-#[doc=concat!(doc0to1!(), "[`", "take_until1", "`]")]
-pub fn take_until0<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
-where
-	F: Fn(char) -> bool + 'a,
-{
-	take_while0(move |c| !f(c))
-}
-
-/// Matches the characters in `chars`.
-///
-#[doc=concat!(doc0to1!(), "[`", "one_of1", "`]")]
-pub fn one_of0<'a, 'c: 'a>(
-	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
-	take_while0(move |c| chars.contains(&c))
-}
-
-/// Matches the characters not in `chars`.
-///
-#[doc=concat!(doc0to1!(), "[`", "none_of1", "`]")]
-pub fn none_of0<'a, 'c: 'a>(
-	chars: &'c [char],
-) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
-	take_until0(move |c| chars.contains(&c))
-}
-
-/// Matches Unicode whitespace.
-///
-/// Uses [`char::is_whitespace`].
-///
-#[doc=concat!(doc0to1!(), "[`", "whitespace1", "`]")]
-pub fn whitespace0(input: &str) -> PResult<&str, &str, Error> {
-	take_while0(|c| c.is_whitespace()).parse(input)
-}
-
-/// Matches alphabetic characters.
-///
-/// Uses [`char::is_alphabetic`].
-///
-#[doc=concat!(doc0to1!(), "[`", "alphabetic0", "`]")]
-pub fn alphabetic0(input: &str) -> PResult<&str, &str, Error> {
-	take_while0(|c| c.is_alphabetic()).parse(input)
-}
-
-/// Matches alphanumeric characters.
-///
-/// Uses [`char::is_alphanumeric`].
-///
-/// ```rust
-/// use komb::{Parser, string::alphanumeric0};
-///
-/// let p = alphanumeric0;
-///
-/// assert_eq!(Ok(("abc0", " rest")), p.parse("abc0 rest"));
-/// assert_eq!(Ok(("", "-_-")), p.parse("-_-"));
-/// assert_eq!(Ok(("", "")), p.parse(""));
-/// ```
-///
-#[doc=concat!(doc0to1!(), "[`", "alphanumeric1", "`]")]
-pub fn alphanumeric0(input: &str) -> PResult<&str, &str, Error> {
-	take_while0(|c| c.is_alphanumeric()).parse(input)
-}
-
 /// Cuts off a prefix of a string for whose characters the predicate `f` returns
 /// `true`.
 ///
 /// ```rust
-/// use komb::{Parser, string::take_while1};
+/// use komb::{Parser, string::take_while};
 ///
-/// let p = take_while1(|ch| ch == '0' || ch == '1');
+/// let p = take_while(|ch| ch == '0' || ch == '1');
 ///
 /// assert_eq!(Ok(("01010", "rest")), p.parse("01010rest"));
 /// assert!(p.parse("other").is_err());
 /// ```
-///
-#[doc=concat!(doc1to0!(), "[`", "take_while0", "`]")]
-pub fn take_while1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
+pub fn take_while<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
 where
 	F: Fn(char) -> bool + 'a,
 {
@@ -397,49 +296,39 @@ where
 }
 
 /// Matches a prefix until the first character which satisfies the predicate.
-///
-#[doc=concat!(doc1to0!(), "[`", "take_until0", "`]")]
-pub fn take_until1<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
+pub fn take_until<'a, F>(f: F) -> impl Parser<'a, &'a str, &'a str, Error<'a>>
 where
 	F: Fn(char) -> bool + 'a,
 {
-	take_while1(move |c| !f(c))
+	take_while(move |c| !f(c))
 }
 
 /// Matches the characters in `chars`.
-///
-#[doc=concat!(doc1to0!(), "[`", "one_of0", "`]")]
-pub fn one_of1<'a, 'c: 'a>(
+pub fn one_of<'a, 'c: 'a>(
 	chars: &'c [char],
 ) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
-	take_while1(move |c| chars.contains(&c))
+	take_while(move |c| chars.contains(&c))
 }
 
 /// Matches the characters not in `chars`.
-///
-#[doc=concat!(doc1to0!(), "[`", "none_of0", "`]")]
-pub fn none_of1<'a, 'c: 'a>(
+pub fn none_of<'a, 'c: 'a>(
 	chars: &'c [char],
 ) -> impl Parser<'a, &'a str, &'a str, Error<'a>> {
-	take_until1(move |c| chars.contains(&c))
+	take_until(move |c| chars.contains(&c))
 }
 
 /// Matches Unicode whitespace.
 ///
 /// Uses [`char::is_whitespace`].
-///
-#[doc=concat!(doc1to0!(), "[`", "whitespace0", "`]")]
-pub fn whitespace1(input: &str) -> PResult<&str, &str, Error> {
-	take_while1(|c| c.is_whitespace()).parse(input)
+pub fn whitespace(input: &str) -> PResult<&str, &str, Error> {
+	take_while(|c| c.is_whitespace()).parse(input)
 }
 
 /// Matches alphabetic characters.
 ///
 /// Uses [`char::is_alphabetic`].
-///
-#[doc=concat!(doc1to0!(), "[`", "alphabetic1", "`]")]
-pub fn alphanumeric1(input: &str) -> PResult<&str, &str, Error> {
-	take_while1(|c| c.is_alphanumeric()).parse(input)
+pub fn alphanumeric(input: &str) -> PResult<&str, &str, Error> {
+	take_while(|c| c.is_alphanumeric()).parse(input)
 }
 
 /// Matches alphanumeric characters.
@@ -447,17 +336,15 @@ pub fn alphanumeric1(input: &str) -> PResult<&str, &str, Error> {
 /// Uses [`char::is_alphanumeric`].
 ///
 /// ```rust
-/// use komb::{Parser, string::alphabetic1};
+/// use komb::{Parser, string::alphabetic};
 ///
-/// let p = alphabetic1;
+/// let p = alphabetic;
 ///
 /// assert_eq!(Ok(("abcXYZ", " rest")), p.parse("abcXYZ rest"));
 /// assert!(p.parse("_ident").is_err());
 /// ```
-///
-#[doc=concat!(doc1to0!(), "[`", "alphanumeric1", "`]")]
-pub fn alphabetic1(input: &str) -> PResult<&str, &str, Error> {
-	take_while1(|c| c.is_alphabetic()).parse(input)
+pub fn alphabetic(input: &str) -> PResult<&str, &str, Error> {
+	take_while(|c| c.is_alphabetic()).parse(input)
 }
 
 // Character combinators
@@ -522,31 +409,15 @@ pub fn none_of_char<'a, 'c: 'a>(
 /// Uses [`char::is_digit`] underneath.
 ///
 /// ```rust
-/// use komb::{Parser, string::digits1};
+/// use komb::{Parser, string::digits};
 ///
-/// let p = digits1::<16>;
+/// let p = digits::<16>;
 ///
 /// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
 /// assert!(p.parse("").is_err());
 /// ```
-pub fn digits1<const R: u32>(input: &str) -> PResult<&str, &str, Error> {
-	take_while1(move |c| c.is_digit(R)).parse(input)
-}
-
-/// Matches digits in a radix.
-///
-/// Uses [`char::is_digit`] underneath.
-///
-/// ```rust
-/// use komb::{Parser, string::digits0};
-///
-/// let p = digits0::<16>;
-///
-/// assert_eq!(Ok(("deadbeef", "rest")), p.parse("deadbeefrest"));
-/// assert_eq!(Ok(("", "")), p.parse(""));
-/// ```
-pub fn digits0<const R: u32>(input: &str) -> PResult<&str, &str, Error> {
-	take_while0(move |c| c.is_digit(R)).parse(input)
+pub fn digits<const R: u32>(input: &str) -> PResult<&str, &str, Error> {
+	take_while(move |c| c.is_digit(R)).parse(input)
 }
 
 macro_rules! impl_parse_uint {
@@ -555,7 +426,7 @@ macro_rules! impl_parse_uint {
 		///
 		/// Plus or minus signs aren't accepted.
 		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
-			let (s, rest) = digits1::<10>.parse(input)?;
+			let (s, rest) = digits::<10>.parse(input)?;
 			let out = s.parse().map_err(|error| {
 				Error::ParseInt { error, span: s }
 			})?;
@@ -586,7 +457,7 @@ macro_rules! impl_parse_sint {
 		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
 			let sign = choice(('+', '-', ""));
 			let (s, rest) =
-				consume((sign, digits1::<10>)).parse(input)?;
+				consume((sign, digits::<10>)).parse(input)?;
 			let out = s.parse().map_err(|error| {
 				Error::ParseInt { error, span: s }
 			})?;
@@ -630,14 +501,14 @@ macro_rules! impl_parse_float {
 					.value(())
 					.parse(input)
 			}
-			let exp = (anycase("e"), sign, digits1::<10>);
+			let exp = (anycase("e"), sign, digits::<10>);
 			let number = (
 				choice((
-					(digits1::<10>, '.', digits0::<10>)
+					(digits::<10>, '.', or0(digits::<10>))
 						.value(()),
-					(digits0::<10>, '.', digits1::<10>)
+					(or0(digits::<10>), '.', digits::<10>)
 						.value(()),
-					digits1::<10>.value(()),
+					digits::<10>.value(()),
 				)),
 				optional(exp),
 			);
@@ -675,11 +546,11 @@ mod test {
 	fn playground() {
 		assert_eq!(
 			("ab", "cd"),
-			none_of0(&['c']).parse("abcd").unwrap()
+			none_of(&['c']).parse("abcd").unwrap()
 		);
 		assert_eq!(
 			("ab", "cd"),
-			one_of0(&['a', 'b']).parse("abcd").unwrap()
+			one_of(&['a', 'b']).parse("abcd").unwrap()
 		);
 	}
 }

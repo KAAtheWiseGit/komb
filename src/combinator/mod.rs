@@ -68,9 +68,9 @@ where
 ///
 /// ```rust
 /// use komb::{Parser, combinator::delimited};
-/// use komb::string::alphabetic0;
+/// use komb::string::{alphabetic, or0};
 ///
-/// let p = delimited("(", alphabetic0, ")");
+/// let p = delimited("(", or0(alphabetic), ")");
 ///
 /// assert_eq!(Ok(("word", "")), p.parse("(word)"));
 /// assert_eq!(Ok(("", " rest")), p.parse("() rest"));
