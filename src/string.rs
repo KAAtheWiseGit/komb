@@ -574,8 +574,17 @@ impl_parse_uint!(usize);
 macro_rules! impl_parse_sint {
 	($type:ident) => {
 		#[doc=concat!("Parses a decimal [`", stringify!($type), "`][prim@", stringify!($type), "].")]
+		///
+		/// ```rust
+		/// use komb::Parser;
+		#[doc=concat!("use komb::string::", stringify!($type), ";")]
+		///
+		#[doc=concat!("assert_eq!(Ok((3, \"\")), ", stringify!($type), ".parse(\"3\"));")]
+		#[doc=concat!("assert_eq!(Ok((-1, \"\")), ", stringify!($type), ".parse(\"-1\"));")]
+		#[doc=concat!("assert_eq!(Ok((4, \"\")), ", stringify!($type), ".parse(\"+4\"));")]
+		/// ```
 		pub fn $type(input: &str) -> PResult<&str, $type, Error> {
-			let sign = ('+', '-', "");
+			let sign = choice(('+', '-', ""));
 			let (s, rest) =
 				consume((sign, digits1::<10>)).parse(input)?;
 			let out = s.parse().map_err(|error| {
